@@ -1348,14 +1348,25 @@
 
   // ── DOWNLOAD ──────────────────────────────────────────────────────
   function triggerDownload(url, filename) {
-    var base     = location.origin;
-    var proxyUrl = base + '/api/download'
-      + '?url='      + encodeURIComponent(url)
-      + '&filename=' + encodeURIComponent(filename || 'file');
-    // Use hidden anchor appended to body — works without popup blocker issues
+    var fname = filename || 'file';
+    var ext   = fname.split('.').pop().toLowerCase();
+    var isDirectDownload = ['png','jpg','jpeg','svg','webp','gif','pdf'].indexOf(ext) !== -1;
+
+    var href;
+    if (isDirectDownload) {
+      // Images and PDFs: use Cloudinary URL directly with fl_attachment flag
+      // This tells Cloudinary to serve as download instead of inline
+      href = url.replace('/upload/', '/upload/fl_attachment/');
+    } else {
+      // Raw files (CDR, AI, etc): route through our server proxy
+      href = location.origin + '/api/download'
+        + '?url='      + encodeURIComponent(url)
+        + '&filename=' + encodeURIComponent(fname);
+    }
+
     var a = document.createElement('a');
-    a.href = proxyUrl;
-    a.download = filename || 'file';
+    a.href = href;
+    a.download = fname;
     a.style.display = 'none';
     document.body.appendChild(a);
     a.click();
@@ -1364,9 +1375,10 @@
 
   function downloadAll(pid) {
     var p = products.find(function(x) { return x.id === pid; });
-    if (!p || !p.files || !p.files.length) return;
-    // Download files one by one — stagger so browser doesn't block multiple
-    p.files.forEach(function(f, i) {
+    if (!p) return;
+    var allFiles = (p.files || []).concat(p.refFiles || []);
+    if (!allFiles.length) return;
+    allFiles.forEach(function(f, i) {
       setTimeout(function() { triggerDownload(f.url, f.originalName); }, i * 1000);
     });
   }
@@ -1407,7 +1419,10 @@
       var iconColor = isPDF ? '#c0392b' : 'var(--accent2)';
 
       if (isImg) {
-        content.innerHTML = '<img src="' + rf.url + '" alt="' + escHtml(rf.originalName) + '" />';
+        content.innerHTML = '<div style="display:flex;flex-direction:column;align-items:center;gap:1rem">'
+          + '<img src="' + rf.url + '" alt="' + escHtml(rf.originalName || '') + '" />'
+          + '<button class="lightbox-dl" onclick="downloadRefFile(\'' + lbProductId + '\',' + lbFileIndex + ')">&#8595; Download File</button>'
+          + '</div>';
       } else {
         content.innerHTML = '<div class="lightbox-cdr">'
           + '<div class="cdr-icon" style="background:' + iconColor + '">' + ext + '</div>'
