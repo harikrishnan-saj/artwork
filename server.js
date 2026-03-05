@@ -376,20 +376,23 @@ app.get('/api/download', async (req, res) => {
   if (!url) return res.status(400).send('Missing url');
 
   try {
-    const https  = require('https');
-    const http   = require('http');
-    const client = url.startsWith('https') ? https : http;
+    // Use global fetch (Node 18+) which handles redirects and streams correctly
+    const response = await fetch(url);
+    if (!response.ok) {
+      return res.status(response.status).send('Upstream error: ' + response.status);
+    }
+    const safeFilename = filename.replace(/"/g, '_');
+    res.setHeader('Content-Disposition', 'attachment; filename="' + safeFilename + '"');
+    res.setHeader('Content-Type', response.headers.get('content-type') || 'application/octet-stream');
+    const cl = response.headers.get('content-length');
+    if (cl) res.setHeader('Content-Length', cl);
 
-    client.get(url, function(fileRes) {
-      res.setHeader('Content-Disposition', 'attachment; filename="' + filename.replace(/"/g, '') + '"');
-      res.setHeader('Content-Type', fileRes.headers['content-type'] || 'application/octet-stream');
-      fileRes.pipe(res);
-    }).on('error', function(err) {
-      console.error('Proxy download error:', err.message);
-      res.status(500).send('Download failed');
-    });
+    // Pipe the response body stream to the client
+    const { Readable } = require('stream');
+    Readable.fromWeb(response.body).pipe(res);
   } catch(e) {
-    res.status(500).send('Download failed: ' + e.message);
+    console.error('Proxy download error:', e.message);
+    if (!res.headersSent) res.status(500).send('Download failed: ' + e.message);
   }
 });
 

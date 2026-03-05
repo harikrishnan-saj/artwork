@@ -1348,24 +1348,13 @@
 
   // ── DOWNLOAD ──────────────────────────────────────────────────────
   function triggerDownload(url, filename) {
-    var fname = filename || 'file';
-    var ext   = fname.split('.').pop().toLowerCase();
-    var isDirectDownload = ['png','jpg','jpeg','svg','webp','gif','pdf'].indexOf(ext) !== -1;
-
-    var href;
-    if (isDirectDownload) {
-      // Images and PDFs: use Cloudinary URL directly with fl_attachment flag
-      // This tells Cloudinary to serve as download instead of inline
-      href = url.replace('/upload/', '/upload/fl_attachment/');
-    } else {
-      // Raw files (CDR, AI, etc): route through our server proxy
-      href = location.origin + '/api/download'
-        + '?url='      + encodeURIComponent(url)
-        + '&filename=' + encodeURIComponent(fname);
-    }
-
+    // Always route through server proxy — handles all file types correctly
+    var fname    = filename || 'file';
+    var proxyUrl = location.origin + '/api/download'
+      + '?url='      + encodeURIComponent(url)
+      + '&filename=' + encodeURIComponent(fname);
     var a = document.createElement('a');
-    a.href = href;
+    a.href = proxyUrl;
     a.download = fname;
     a.style.display = 'none';
     document.body.appendChild(a);
