@@ -1199,8 +1199,8 @@
         delBtn.className = 'ref-thumb-del';
         delBtn.innerHTML = '&#10005;';
         delBtn.title = 'Remove reference';
-        (function(pid, sn, idx) {
-          delBtn.onclick = function(e) { e.stopPropagation(); deleteRefFile(pid, publicId); };
+        (function(pid, rpid, idx) {
+          delBtn.onclick = function(e) { e.stopPropagation(); deleteRefFile(pid, rpid); };
           rw.onclick = function() { openRefLightbox(pid, idx); };
         })(p.id, rf.publicId, rfIdx);
         rw.appendChild(delBtn);
@@ -1347,34 +1347,43 @@
   }
 
   // ── DOWNLOAD ──────────────────────────────────────────────────────
+  function triggerDownload(url, filename) {
+    // Fetch as blob to force download even for cross-origin Cloudinary URLs
+    fetch(url)
+      .then(function(r) { return r.blob(); })
+      .then(function(blob) {
+        var blobUrl = URL.createObjectURL(blob);
+        var a = document.createElement('a');
+        a.href = blobUrl;
+        a.download = filename || 'file';
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        setTimeout(function() { URL.revokeObjectURL(blobUrl); }, 1000);
+      })
+      .catch(function() {
+        // Fallback: open in new tab
+        window.open(url, '_blank');
+      });
+  }
+
   function downloadAll(pid) {
     var p = products.find(function(x) { return x.id === pid; });
-    if (!p) return;
+    if (!p || !p.files || !p.files.length) return;
     p.files.forEach(function(f, i) {
-      setTimeout(function() {
-        var a = document.createElement('a');
-        a.href = f.url;
-        a.download = f.originalName;
-        a.click();
-      }, i * 350);
+      setTimeout(function() { triggerDownload(f.url, f.originalName); }, i * 600);
     });
   }
 
   function downloadFile(url, originalName) {
-    var a = document.createElement('a');
-    a.href = url;
-    a.download = originalName;
-    a.click();
+    triggerDownload(url, originalName);
   }
 
   function downloadRefFile(pid, idx) {
     var p = products.find(function(x) { return x.id === pid; });
     var rf = p && (p.refFiles || [])[idx];
     if (!rf) return;
-    var a = document.createElement('a');
-    a.href = rf.url;
-    a.download = rf.originalName;
-    a.click();
+    triggerDownload(rf.url, rf.originalName);
   }
 
   // ── LIGHTBOX ──────────────────────────────────────────────────────

@@ -48,19 +48,23 @@ function uploadToCloudinary(buffer, originalName, folder) {
   return new Promise((resolve, reject) => {
     const safeName     = originalName || 'unnamed_file';
     const ext          = path.extname(safeName).toLowerCase();
+    const nameNoExt    = path.basename(safeName, ext);
     const isImage      = ['.png','.jpg','.jpeg','.svg','.webp','.gif'].includes(ext);
     const isPDF        = ext === '.pdf';
     // CDR, AI, and all other non-image/pdf files go as raw
     const resourceType = (isImage || isPDF) ? 'auto' : 'raw';
 
+    // Force public_id to include the extension so Cloudinary can't rename CDR→zip
+    // e.g. "artwork_manager/artwork/myfile_cdr" with format locked
+    const uniqueSuffix = Date.now() + '_' + Math.round(Math.random() * 1e4);
+    const forcedPublicId = folder + '/' + nameNoExt + '_' + uniqueSuffix + ext.replace('.', '_');
+
     const stream = cloudinary.uploader.upload_stream(
       {
-        folder,
+        public_id:       forcedPublicId,
         resource_type:   resourceType,
-        use_filename:    true,
-        unique_filename: true,
-        // Allow any file format including CDR
-        allowed_formats: null,
+        // Do NOT use use_filename/unique_filename when setting public_id manually
+        overwrite:       false,
       },
       (err, result) => {
         if (err) {
@@ -70,12 +74,19 @@ function uploadToCloudinary(buffer, originalName, folder) {
         if (!result || !result.public_id) {
           return reject(new Error('Cloudinary returned no result for ' + safeName));
         }
+        // Always use the original extension in the URL for raw files
+        // so CDR files don't get served as .zip
+        let fileUrl = result.secure_url || '';
+        if (resourceType === 'raw' && fileUrl && !fileUrl.endsWith(ext)) {
+          // Strip whatever extension Cloudinary assigned and use original
+          fileUrl = fileUrl.replace(/\.[^/.]+$/, '') + ext;
+        }
         resolve({
           originalName:  safeName,
           publicId:      result.public_id,
-          url:           result.secure_url  || '',
+          url:           fileUrl,
           resourceType:  result.resource_type || resourceType,
-          format:        result.format        || ext.replace('.',''),
+          format:        ext.replace('.', ''),
           size:          result.bytes         || buffer.length,
         });
       }
@@ -119,9 +130,12 @@ app.get('/api/products', (req, res) => {
 // POST create product
 app.post('/api/products', upload.array('files'), async (req, res) => {
   try {
-    const files = await Promise.all(
+    const files = (await Promise.allSettled(
       (req.files || []).map(f => uploadToCloudinary(f.buffer, f.originalname, 'artwork_manager/artwork'))
-    );
+    )).filter(r => {
+      if (r.status === 'rejected') console.error('File upload skipped:', r.reason?.message);
+      return r.status === 'fulfilled';
+    }).map(r => r.value);
     const db      = readDB();
     const product = {
       id:       Date.now(),
@@ -155,9 +169,12 @@ app.put('/api/products/:id', upload.array('newFiles'), async (req, res) => {
     await Promise.all(toDelete.map(f => deleteFromCloudinary(f.publicId, f.resourceType)));
 
     const keptFiles = p.files.filter(f => keepIds.includes(f.publicId));
-    const newFiles  = await Promise.all(
+    const newFiles  = (await Promise.allSettled(
       (req.files || []).map(f => uploadToCloudinary(f.buffer, f.originalname, 'artwork_manager/artwork'))
-    );
+    )).filter(r => {
+      if (r.status === 'rejected') console.error('File upload skipped:', r.reason?.message);
+      return r.status === 'fulfilled';
+    }).map(r => r.value);
 
     p.name    = req.body.name    || p.name;
     p.brand   = req.body.brand   || '';
