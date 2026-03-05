@@ -30,7 +30,12 @@ function readDB() {
   catch { return { products: [] }; }
 }
 function writeDB(data) {
-  fs.writeFileSync(DB_FILE, JSON.stringify(data, null, 2), 'utf8');
+  try {
+    fs.writeFileSync(DB_FILE, JSON.stringify(data, null, 2), 'utf8');
+  } catch(e) {
+    console.error('writeDB error:', e.message, '| DB_FILE:', DB_FILE);
+    throw e;
+  }
 }
 
 // ── MULTER (memory — files go to Cloudinary) ──────────────────────
@@ -70,7 +75,7 @@ function deleteFromCloudinary(publicId, resourceType) {
 }
 
 // ── MIDDLEWARE ────────────────────────────────────────────────────
-app.use(cors());
+app.use(cors({ origin: '*' }));
 app.use(express.json());
 app.use(express.static(path.join(__dirname, 'public')));
 
@@ -78,8 +83,13 @@ app.use(express.static(path.join(__dirname, 'public')));
 
 // GET all products
 app.get('/api/products', (req, res) => {
-  const db = readDB();
-  res.json(db.products);
+  try {
+    const db = readDB();
+    res.json(db.products || []);
+  } catch(e) {
+    console.error('GET /api/products error:', e.message);
+    res.status(500).json({ error: e.message });
+  }
 });
 
 // POST create product
