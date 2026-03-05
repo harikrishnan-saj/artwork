@@ -1348,30 +1348,26 @@
 
   // ── DOWNLOAD ──────────────────────────────────────────────────────
   function triggerDownload(url, filename) {
-    // Fetch as blob to force download even for cross-origin Cloudinary URLs
-    fetch(url)
-      .then(function(r) { return r.blob(); })
-      .then(function(blob) {
-        var blobUrl = URL.createObjectURL(blob);
-        var a = document.createElement('a');
-        a.href = blobUrl;
-        a.download = filename || 'file';
-        document.body.appendChild(a);
-        a.click();
-        document.body.removeChild(a);
-        setTimeout(function() { URL.revokeObjectURL(blobUrl); }, 1000);
-      })
-      .catch(function() {
-        // Fallback: open in new tab
-        window.open(url, '_blank');
-      });
+    var base     = location.origin;
+    var proxyUrl = base + '/api/download'
+      + '?url='      + encodeURIComponent(url)
+      + '&filename=' + encodeURIComponent(filename || 'file');
+    // Use hidden anchor appended to body — works without popup blocker issues
+    var a = document.createElement('a');
+    a.href = proxyUrl;
+    a.download = filename || 'file';
+    a.style.display = 'none';
+    document.body.appendChild(a);
+    a.click();
+    setTimeout(function() { document.body.removeChild(a); }, 200);
   }
 
   function downloadAll(pid) {
     var p = products.find(function(x) { return x.id === pid; });
     if (!p || !p.files || !p.files.length) return;
+    // Download files one by one — stagger so browser doesn't block multiple
     p.files.forEach(function(f, i) {
-      setTimeout(function() { triggerDownload(f.url, f.originalName); }, i * 600);
+      setTimeout(function() { triggerDownload(f.url, f.originalName); }, i * 1000);
     });
   }
 
