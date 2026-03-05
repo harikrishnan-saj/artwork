@@ -21,10 +21,34 @@ cloudinary.config({
 // ── MONGODB ───────────────────────────────────────────────────────
 let db;
 async function connectDB() {
-  const client = new MongoClient(process.env.MONGODB_URI);
+  const uri = process.env.MONGODB_URI;
+
+  // Debug — printed in Railway logs (no secrets exposed)
+  console.log('  ENV CHECK — MONGODB_URI present :', !!uri);
+  console.log('  ENV CHECK — CLOUDINARY_NAME present:', !!process.env.CLOUDINARY_CLOUD_NAME);
+  console.log('  ENV CHECK — NODE_ENV             :', process.env.NODE_ENV || 'not set');
+
+  if (!uri) {
+    throw new Error(
+      'MONGODB_URI is undefined. Make sure it is set in Railway → Variables tab and you have redeployed after adding it.'
+    );
+  }
+  if (!uri.startsWith('mongodb')) {
+    throw new Error(
+      'MONGODB_URI does not look valid. Got: ' + uri.slice(0, 20) + '...'
+    );
+  }
+
+  console.log('  ⟳  Connecting to MongoDB...');
+  const client = new MongoClient(uri, {
+    serverSelectionTimeoutMS: 15000,
+    connectTimeoutMS:         15000,
+    tls:                      true,
+    tlsAllowInvalidCertificates: true,
+  });
   await client.connect();
   db = client.db('artwork_manager');
-  console.log('  ✅  MongoDB connected');
+  console.log('  ✅  MongoDB connected successfully');
 }
 
 function products() { return db.collection('products'); }
@@ -265,5 +289,7 @@ connectDB().then(() => {
   });
 }).catch(err => {
   console.error('❌  MongoDB connection failed:', err.message);
+  console.error('    MONGODB_URI set:', !!process.env.MONGODB_URI);
+  console.error('    Full error:', err);
   process.exit(1);
 });
