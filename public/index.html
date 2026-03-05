@@ -888,8 +888,8 @@
     modalExistingFiles.forEach(function(f, idx) {
       var div = document.createElement('div');
       div.className = 'modal-file-item mf-existing';
-      var ext = f.originalName.split('.').pop().toUpperCase();
-      var isImg = /\.(png|jpg|jpeg|svg|webp)$/i.test(f.originalName);
+      var ext = (f.originalName || 'file').split('.').pop().toUpperCase();
+      var isImg = /\.(png|jpg|jpeg|svg|webp)$/i.test(f.originalName || '');
       var thumbInner = isImg
         ? '<img src="' + f.url + '" />'
         : '<span style="font-size:0.58rem;font-weight:700;color:var(--accent2)">' + ext + '</span>';
@@ -1031,11 +1031,7 @@
       cb(result);
     }
   }
-  document.getElementById('confirm-overlay').addEventListener('click', function() { closeConfirm(false); });
-  document.addEventListener('keydown', function(e) {
-    if (e.key === 'Escape' && document.getElementById('confirm-overlay').classList.contains('open')) closeConfirm(false);
-    if (e.key === 'Enter'  && document.getElementById('confirm-overlay').classList.contains('open')) closeConfirm(true);
-  });
+  // confirm overlay events attached after DOM ready (see DOMContentLoaded below)
 
   function deleteRefFile(pid, publicId) {
     showConfirm(
@@ -1108,11 +1104,11 @@
       p.files.forEach(function(f, fIdx) {
         var tw = document.createElement('div');
         tw.className = 'thumb-wrap';
-        tw.title = f.originalName;
-        var isImg = /\.(png|jpg|jpeg|svg|webp)$/i.test(f.originalName);
-        var ext   = f.originalName.split('.').pop().toUpperCase();
+        tw.title = f.originalName || 'file';
+        var isImg = /\.(png|jpg|jpeg|svg|webp)$/i.test(f.originalName || '');
+        var ext   = (f.originalName || 'file').split('.').pop().toUpperCase();
         if (isImg) {
-          tw.innerHTML = '<img src="' + f.url + '" alt="' + escHtml(f.originalName) + '" />';
+          tw.innerHTML = '<img src="' + f.url + '" alt="' + escHtml(f.originalName || '') + '" />';
         } else {
           tw.innerHTML = '<div class="thumb-placeholder">'
             + '<svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>'
@@ -1162,14 +1158,14 @@
       refFiles.forEach(function(rf, rfIdx) {
         var rw = document.createElement('div');
         rw.className = 'ref-thumb-wrap';
-        rw.title = rf.originalName;
+        rw.title = rf.originalName || 'file';
 
-        var isImg = /\.(png|jpg|jpeg|svg|webp)$/i.test(rf.originalName);
-        var isPDF = /\.pdf$/i.test(rf.originalName);
-        var ext = rf.originalName.split('.').pop().toUpperCase();
+        var isImg = /\.(png|jpg|jpeg|svg|webp)$/i.test(rf.originalName || '');
+        var isPDF = /\.pdf$/i.test(rf.originalName || '');
+        var ext = (rf.originalName || 'file').split('.').pop().toUpperCase();
 
         if (isImg) {
-          rw.innerHTML = '<img src="' + rf.url + '" alt="' + escHtml(rf.originalName) + '" />';
+          rw.innerHTML = '<img src="' + rf.url + '" alt="' + escHtml(rf.originalName || '') + '" />';
         } else if (isPDF) {
           rw.innerHTML = '<div class="thumb-placeholder">'
             + '<svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>'
@@ -1381,9 +1377,9 @@
       var rf = refFiles[lbFileIndex];
       if (!rf) return;
 
-      var isImg = /\.(png|jpg|jpeg|svg|webp)$/i.test(rf.originalName);
+      var isImg = /\.(png|jpg|jpeg|svg|webp)$/i.test(rf.originalName || '');
       var isPDF = /\.pdf$/i.test(rf.originalName);
-      var ext = rf.originalName.split('.').pop().toUpperCase();
+      var ext = (rf.originalName || "file").split('.').pop().toUpperCase();
       var iconColor = isPDF ? '#c0392b' : 'var(--accent2)';
 
       if (isImg) {
@@ -1412,12 +1408,12 @@
 
     if (!p) return;
     var f = p.files[lbFileIndex];
-    var isImg = /\.(png|jpg|jpeg|svg|webp)$/i.test(f.originalName);
+    var isImg = /\.(png|jpg|jpeg|svg|webp)$/i.test(f.originalName || '');
 
     if (isImg) {
       content.innerHTML = '<img src="' + f.url + '" alt="' + escHtml(f.originalName) + '" />';
     } else {
-      var ext = f.originalName.split('.').pop().toUpperCase();
+      var ext = (f.originalName || 'file').split('.').pop().toUpperCase();
       content.innerHTML = '<div class="lightbox-cdr">'
         + '<div class="cdr-icon">' + ext + '</div>'
         + '<div class="cdr-product">' + escHtml(p.name) + '</div>'
@@ -1525,11 +1521,11 @@
         p.files.forEach(function(f, fIdx) {
           var tw = document.createElement('div');
           tw.className = 'thumb-wrap';
-          tw.title = f.originalName;
-          var isImg = /\.(png|jpg|jpeg|svg|webp)$/i.test(f.originalName);
-          var ext   = f.originalName.split('.').pop().toUpperCase();
+          tw.title = f.originalName || 'file';
+          var isImg = /\.(png|jpg|jpeg|svg|webp)$/i.test(f.originalName || '');
+          var ext   = (f.originalName || 'file').split('.').pop().toUpperCase();
           if (isImg && f.url) {
-            tw.innerHTML = '<img src="' + f.url + '" alt="' + escHtml(f.originalName) + '" />';
+            tw.innerHTML = '<img src="' + f.url + '" alt="' + escHtml(f.originalName || '') + '" />';
           } else {
             tw.innerHTML = '<div class="thumb-placeholder"><svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg><span class="cdr-badge">' + ext + '</span></div>';
           }
@@ -1568,12 +1564,12 @@
       refFiles.forEach(function(rf, rfIdx) {
         var rw = document.createElement('div');
         rw.className = 'ref-thumb-wrap';
-        rw.title = rf.originalName;
-        var isImg = /\.(png|jpg|jpeg|svg|webp)$/i.test(rf.originalName);
-        var isPDF = /\.pdf$/i.test(rf.originalName);
-        var ext = rf.originalName.split('.').pop().toUpperCase();
+        rw.title = rf.originalName || 'file';
+        var isImg = /\.(png|jpg|jpeg|svg|webp)$/i.test(rf.originalName || '');
+        var isPDF = /\.pdf$/i.test(rf.originalName || '');
+        var ext = (rf.originalName || 'file').split('.').pop().toUpperCase();
         if (isImg && rf.url) {
-          rw.innerHTML = '<img src="' + rf.url + '" alt="' + escHtml(rf.originalName) + '" />';
+          rw.innerHTML = '<img src="' + rf.url + '" alt="' + escHtml(rf.originalName || '') + '" />';
         } else if (isPDF) {
           rw.innerHTML = '<div class="thumb-placeholder"><svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg><span class="ref-pdf-badge">PDF</span></div>';
         } else {
@@ -1748,6 +1744,13 @@
       doImport();
     }
   }
+
+  // Attach confirm dialog events now that DOM is ready
+  document.getElementById('confirm-overlay').addEventListener('click', function() { closeConfirm(false); });
+  document.addEventListener('keydown', function(e) {
+    if (e.key === 'Escape' && document.getElementById('confirm-overlay').classList.contains('open')) closeConfirm(false);
+    if (e.key === 'Enter'  && document.getElementById('confirm-overlay').classList.contains('open')) closeConfirm(true);
+  });
 
   loadProducts();
 </script>

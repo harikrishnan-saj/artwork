@@ -45,22 +45,37 @@ const importUpload = multer({ storage: multer.memoryStorage(), limits: { fileSiz
 // ── CLOUDINARY HELPERS ────────────────────────────────────────────
 function uploadToCloudinary(buffer, originalName, folder) {
   return new Promise((resolve, reject) => {
-    const ext          = path.extname(originalName).toLowerCase();
+    const safeName     = originalName || 'unnamed_file';
+    const ext          = path.extname(safeName).toLowerCase();
     const isImage      = ['.png','.jpg','.jpeg','.svg','.webp','.gif'].includes(ext);
     const isPDF        = ext === '.pdf';
+    // CDR, AI, and all other non-image/pdf files go as raw
     const resourceType = (isImage || isPDF) ? 'auto' : 'raw';
 
     const stream = cloudinary.uploader.upload_stream(
-      { folder, resource_type: resourceType, use_filename: true, unique_filename: true },
+      {
+        folder,
+        resource_type:   resourceType,
+        use_filename:    true,
+        unique_filename: true,
+        // Allow any file format including CDR
+        allowed_formats: null,
+      },
       (err, result) => {
-        if (err) return reject(err);
+        if (err) {
+          console.error('Cloudinary upload error for', safeName, ':', err.message);
+          return reject(new Error('Upload failed for ' + safeName + ': ' + err.message));
+        }
+        if (!result || !result.public_id) {
+          return reject(new Error('Cloudinary returned no result for ' + safeName));
+        }
         resolve({
-          originalName,
-          publicId:     result.public_id,
-          url:          result.secure_url,
-          resourceType: result.resource_type,
-          format:       result.format,
-          size:         result.bytes,
+          originalName:  safeName,
+          publicId:      result.public_id,
+          url:           result.secure_url  || '',
+          resourceType:  result.resource_type || resourceType,
+          format:        result.format        || ext.replace('.',''),
+          size:          result.bytes         || buffer.length,
         });
       }
     );
@@ -80,6 +95,11 @@ app.use(express.json());
 app.use(express.static(path.join(__dirname, 'public')));
 
 // ── API ROUTES ────────────────────────────────────────────────────
+
+// Health check
+app.get('/api/health', (req, res) => {
+  res.json({ ok: true, dbFile: DB_FILE, dataDir: DATA_DIR, exists: fs.existsSync(DB_FILE) });
+});
 
 // GET all products
 app.get('/api/products', (req, res) => {
