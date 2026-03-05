@@ -1,11 +1,11 @@
-const express    = require('express');
-const multer     = require('multer');
-const cors       = require('cors');
-const path       = require('path');
-const archiver   = require('archiver');
-const unzipper   = require('unzipper');
-const { MongoClient, ObjectId } = require('mongodb');
-const cloudinary = require('cloudinary').v2;
+const express     = require('express');
+const multer      = require('multer');
+const cors        = require('cors');
+const path        = require('path');
+const fs          = require('fs');
+const archiver    = require('archiver');
+const unzipper    = require('unzipper');
+const cloudinary  = require('cloudinary').v2;
 const streamifier = require('streamifier');
 
 const app  = express();
@@ -18,49 +18,31 @@ cloudinary.config({
   api_secret: process.env.CLOUDINARY_API_SECRET,
 });
 
-// ── MONGODB ───────────────────────────────────────────────────────
-let db;
-async function connectDB() {
-  const uri = process.env.MONGODB_URI;
+// ── DATA DIR — uses Railway volume if available, else local ───────
+// In Railway: add a Volume mounted at /data in your service settings
+const DATA_DIR = process.env.DATA_DIR || path.join(__dirname, 'data');
+const DB_FILE  = path.join(DATA_DIR, 'products.json');
+fs.mkdirSync(DATA_DIR, { recursive: true });
 
-  // Debug — printed in Railway logs (no secrets exposed)
-  console.log('  ENV CHECK — MONGODB_URI present :', !!uri);
-  console.log('  ENV CHECK — CLOUDINARY_NAME present:', !!process.env.CLOUDINARY_CLOUD_NAME);
-  console.log('  ENV CHECK — NODE_ENV             :', process.env.NODE_ENV || 'not set');
-
-  if (!uri) {
-    throw new Error(
-      'MONGODB_URI is undefined. Make sure it is set in Railway → Variables tab and you have redeployed after adding it.'
-    );
-  }
-  if (!uri.startsWith('mongodb')) {
-    throw new Error(
-      'MONGODB_URI does not look valid. Got: ' + uri.slice(0, 20) + '...'
-    );
-  }
-
-  console.log('  ⟳  Connecting to MongoDB...');
-  const client = new MongoClient(uri, {
-    serverSelectionTimeoutMS: 15000,
-    connectTimeoutMS:         15000,
-  });
-  await client.connect();
-  db = client.db('artwork_manager');
-  console.log('  ✅  MongoDB connected successfully');
+// ── JSON DATABASE ─────────────────────────────────────────────────
+function readDB() {
+  try { return JSON.parse(fs.readFileSync(DB_FILE, 'utf8')); }
+  catch { return { products: [] }; }
+}
+function writeDB(data) {
+  fs.writeFileSync(DB_FILE, JSON.stringify(data, null, 2), 'utf8');
 }
 
-function products() { return db.collection('products'); }
-
-// ── MULTER (memory — files go straight to Cloudinary) ─────────────
+// ── MULTER (memory — files go to Cloudinary) ──────────────────────
 const upload       = multer({ storage: multer.memoryStorage(), limits: { fileSize: 200 * 1024 * 1024 } });
 const importUpload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 500 * 1024 * 1024 } });
 
 // ── CLOUDINARY HELPERS ────────────────────────────────────────────
 function uploadToCloudinary(buffer, originalName, folder) {
   return new Promise((resolve, reject) => {
-    const ext        = path.extname(originalName).toLowerCase();
-    const isImage    = ['.png','.jpg','.jpeg','.svg','.webp','.gif'].includes(ext);
-    const isPDF      = ext === '.pdf';
+    const ext          = path.extname(originalName).toLowerCase();
+    const isImage      = ['.png','.jpg','.jpeg','.svg','.webp','.gif'].includes(ext);
+    const isPDF        = ext === '.pdf';
     const resourceType = (isImage || isPDF) ? 'auto' : 'raw';
 
     const stream = cloudinary.uploader.upload_stream(
@@ -82,6 +64,7 @@ function uploadToCloudinary(buffer, originalName, folder) {
 }
 
 function deleteFromCloudinary(publicId, resourceType) {
+  if (!publicId) return Promise.resolve();
   return cloudinary.uploader.destroy(publicId, { resource_type: resourceType || 'image' })
     .catch(err => console.warn('Cloudinary delete warning:', err.message));
 }
@@ -91,26 +74,12 @@ app.use(cors());
 app.use(express.json());
 app.use(express.static(path.join(__dirname, 'public')));
 
-// ── SERIALIZE product for API response ───────────────────────────
-function serialize(p) {
-  return {
-    id:       p._id.toString(),
-    name:     p.name,
-    brand:    p.brand    || '',
-    sourced:  p.sourced  || '',
-    files:    p.files    || [],
-    refFiles: p.refFiles || [],
-  };
-}
-
 // ── API ROUTES ────────────────────────────────────────────────────
 
 // GET all products
-app.get('/api/products', async (req, res) => {
-  try {
-    const list = await products().find({}).sort({ createdAt: -1 }).toArray();
-    res.json(list.map(serialize));
-  } catch (e) { res.status(500).json({ error: e.message }); }
+app.get('/api/products', (req, res) => {
+  const db = readDB();
+  res.json(db.products);
 });
 
 // POST create product
@@ -119,25 +88,30 @@ app.post('/api/products', upload.array('files'), async (req, res) => {
     const files = await Promise.all(
       (req.files || []).map(f => uploadToCloudinary(f.buffer, f.originalname, 'artwork_manager/artwork'))
     );
-    const doc = {
-      name:      req.body.name    || '',
-      brand:     req.body.brand   || '',
-      sourced:   req.body.sourced || '',
+    const db      = readDB();
+    const product = {
+      id:       Date.now(),
+      name:     req.body.name    || '',
+      brand:    req.body.brand   || '',
+      sourced:  req.body.sourced || '',
       files,
-      refFiles:  [],
-      createdAt: new Date(),
+      refFiles: [],
     };
-    const result = await products().insertOne(doc);
-    doc._id = result.insertedId;
-    res.json(serialize(doc));
+    db.products.push(product);
+    writeDB(db);
+    res.json(product);
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
 // PUT update product
 app.put('/api/products/:id', upload.array('newFiles'), async (req, res) => {
   try {
-    const p = await products().findOne({ _id: new ObjectId(req.params.id) });
-    if (!p) return res.status(404).json({ error: 'Not found' });
+    const db  = readDB();
+    const id  = parseInt(req.params.id, 10);
+    const idx = db.products.findIndex(p => p.id === id);
+    if (idx === -1) return res.status(404).json({ error: 'Not found' });
+
+    const p = db.products[idx];
 
     let keepIds = [];
     try { keepIds = JSON.parse(req.body.keepFiles || '[]'); } catch {}
@@ -151,30 +125,34 @@ app.put('/api/products/:id', upload.array('newFiles'), async (req, res) => {
       (req.files || []).map(f => uploadToCloudinary(f.buffer, f.originalname, 'artwork_manager/artwork'))
     );
 
-    await products().updateOne(
-      { _id: new ObjectId(req.params.id) },
-      { $set: {
-          name:    req.body.name    || p.name,
-          brand:   req.body.brand   || '',
-          sourced: req.body.sourced !== undefined ? req.body.sourced : (p.sourced || ''),
-          files:   [...keptFiles, ...newFiles],
-      }}
-    );
-    const updated = await products().findOne({ _id: new ObjectId(req.params.id) });
-    res.json(serialize(updated));
+    p.name    = req.body.name    || p.name;
+    p.brand   = req.body.brand   || '';
+    p.sourced = req.body.sourced !== undefined ? req.body.sourced : (p.sourced || '');
+    p.files   = [...keptFiles, ...newFiles];
+    if (!p.refFiles) p.refFiles = [];
+
+    db.products[idx] = p;
+    writeDB(db);
+    res.json(p);
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
-// DELETE product (+ all Cloudinary files)
+// DELETE product
 app.delete('/api/products/:id', async (req, res) => {
   try {
-    const p = await products().findOne({ _id: new ObjectId(req.params.id) });
-    if (!p) return res.status(404).json({ error: 'Not found' });
+    const db  = readDB();
+    const id  = parseInt(req.params.id, 10);
+    const idx = db.products.findIndex(p => p.id === id);
+    if (idx === -1) return res.status(404).json({ error: 'Not found' });
+
+    const p = db.products[idx];
     await Promise.all([
       ...(p.files    || []).map(f => deleteFromCloudinary(f.publicId, f.resourceType)),
       ...(p.refFiles || []).map(f => deleteFromCloudinary(f.publicId, f.resourceType)),
     ]);
-    await products().deleteOne({ _id: new ObjectId(req.params.id) });
+
+    db.products.splice(idx, 1);
+    writeDB(db);
     res.json({ ok: true });
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
@@ -182,68 +160,80 @@ app.delete('/api/products/:id', async (req, res) => {
 // DELETE single artwork file
 app.delete('/api/products/:id/files/:publicId(*)', async (req, res) => {
   try {
-    const p = await products().findOne({ _id: new ObjectId(req.params.id) });
-    if (!p) return res.status(404).json({ error: 'Not found' });
+    const db  = readDB();
+    const id  = parseInt(req.params.id, 10);
+    const idx = db.products.findIndex(p => p.id === id);
+    if (idx === -1) return res.status(404).json({ error: 'Not found' });
+
+    const p    = db.products[idx];
     const file = p.files.find(f => f.publicId === req.params.publicId);
     if (file) await deleteFromCloudinary(file.publicId, file.resourceType);
-    await products().updateOne(
-      { _id: new ObjectId(req.params.id) },
-      { $pull: { files: { publicId: req.params.publicId } } }
-    );
-    const updated = await products().findOne({ _id: new ObjectId(req.params.id) });
-    res.json(serialize(updated));
+    p.files = p.files.filter(f => f.publicId !== req.params.publicId);
+
+    db.products[idx] = p;
+    writeDB(db);
+    res.json(p);
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
 // POST add reference files
 app.post('/api/products/:id/refs', upload.array('refFiles'), async (req, res) => {
   try {
-    const p = await products().findOne({ _id: new ObjectId(req.params.id) });
-    if (!p) return res.status(404).json({ error: 'Not found' });
+    const db  = readDB();
+    const id  = parseInt(req.params.id, 10);
+    const idx = db.products.findIndex(p => p.id === id);
+    if (idx === -1) return res.status(404).json({ error: 'Not found' });
+
     const newRefs = await Promise.all(
       (req.files || []).map(f => uploadToCloudinary(f.buffer, f.originalname, 'artwork_manager/refs'))
     );
-    await products().updateOne(
-      { _id: new ObjectId(req.params.id) },
-      { $push: { refFiles: { $each: newRefs } } }
-    );
-    const updated = await products().findOne({ _id: new ObjectId(req.params.id) });
-    res.json(serialize(updated));
+
+    const p = db.products[idx];
+    if (!p.refFiles) p.refFiles = [];
+    p.refFiles = [...p.refFiles, ...newRefs];
+
+    db.products[idx] = p;
+    writeDB(db);
+    res.json(p);
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
 // DELETE single reference file
 app.delete('/api/products/:id/refs/:publicId(*)', async (req, res) => {
   try {
-    const p = await products().findOne({ _id: new ObjectId(req.params.id) });
-    if (!p) return res.status(404).json({ error: 'Not found' });
-    const file = (p.refFiles || []).find(f => f.publicId === req.params.publicId);
+    const db  = readDB();
+    const id  = parseInt(req.params.id, 10);
+    const idx = db.products.findIndex(p => p.id === id);
+    if (idx === -1) return res.status(404).json({ error: 'Not found' });
+
+    const p    = db.products[idx];
+    if (!p.refFiles) p.refFiles = [];
+    const file = p.refFiles.find(f => f.publicId === req.params.publicId);
     if (file) await deleteFromCloudinary(file.publicId, file.resourceType);
-    await products().updateOne(
-      { _id: new ObjectId(req.params.id) },
-      { $pull: { refFiles: { publicId: req.params.publicId } } }
-    );
-    const updated = await products().findOne({ _id: new ObjectId(req.params.id) });
-    res.json(serialize(updated));
+    p.refFiles = p.refFiles.filter(f => f.publicId !== req.params.publicId);
+
+    db.products[idx] = p;
+    writeDB(db);
+    res.json(p);
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
-// ── EXPORT — zip of metadata JSON (Cloudinary URLs preserved) ─────
-app.get('/api/export', async (req, res) => {
+// ── EXPORT ────────────────────────────────────────────────────────
+app.get('/api/export', (req, res) => {
   try {
-    const list = await products().find({}).toArray();
-    const ts   = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19);
+    const db  = readDB();
+    const ts  = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19);
     res.setHeader('Content-Type', 'application/zip');
     res.setHeader('Content-Disposition', 'attachment; filename="artwork-manager-backup-' + ts + '.zip"');
     const archive = archiver('zip', { zlib: { level: 6 } });
     archive.on('error', err => console.error('Export error:', err));
     archive.pipe(res);
-    archive.append(JSON.stringify({ products: list.map(serialize) }, null, 2), { name: 'products.json' });
+    archive.append(JSON.stringify(db, null, 2), { name: 'products.json' });
     archive.finalize();
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
-// ── IMPORT — restore from backup zip ─────────────────────────────
+// ── IMPORT ────────────────────────────────────────────────────────
 app.post('/api/import', importUpload.single('backup'), async (req, res) => {
   if (!req.file) return res.status(400).json({ error: 'No file uploaded' });
   try {
@@ -259,35 +249,28 @@ app.post('/api/import', importUpload.single('backup'), async (req, res) => {
     }
 
     const mode = req.query.mode || 'replace';
+    const db   = readDB();
+
     if (mode === 'replace') {
-      // Note: Cloudinary files are preserved (URLs still valid) — only DB records cleared
-      await products().deleteMany({});
+      db.products = importedData.products;
+    } else {
+      const existingIds = new Set(db.products.map(p => p.id));
+      importedData.products.forEach(p => {
+        if (existingIds.has(p.id)) p.id = Date.now() + Math.round(Math.random() * 1e5);
+        db.products.push(p);
+      });
     }
 
-    const docs = importedData.products.map(p => ({
-      name:      p.name     || '',
-      brand:     p.brand    || '',
-      sourced:   p.sourced  || '',
-      files:     p.files    || [],
-      refFiles:  p.refFiles || [],
-      createdAt: new Date(),
-    }));
-    if (docs.length > 0) await products().insertMany(docs);
-    res.json({ ok: true, productCount: await products().countDocuments() });
+    writeDB(db);
+    res.json({ ok: true, productCount: db.products.length });
   } catch (e) { res.status(500).json({ error: 'Import failed: ' + e.message }); }
 });
 
 // ── START ─────────────────────────────────────────────────────────
-connectDB().then(() => {
-  app.listen(PORT, () => {
-    console.log('');
-    console.log('  ✅  Product Manager → http://localhost:' + PORT);
-    console.log('  ☁️   Files: Cloudinary  |  Data: MongoDB Atlas');
-    console.log('');
-  });
-}).catch(err => {
-  console.error('❌  MongoDB connection failed:', err.message);
-  console.error('    MONGODB_URI set:', !!process.env.MONGODB_URI);
-  console.error('    Full error:', err);
-  process.exit(1);
+app.listen(PORT, () => {
+  console.log('');
+  console.log('  ✅  Product Manager running at http://localhost:' + PORT);
+  console.log('  📁  Data stored in: ' + DATA_DIR);
+  console.log('  ☁️   Files stored on: Cloudinary');
+  console.log('');
 });
