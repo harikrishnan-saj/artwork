@@ -489,6 +489,48 @@
   @media (min-width: 769px) {
     #mobile-cards { display: none; }
   }
+
+  /* ── CUSTOM CONFIRM DIALOG ──────────────────────────────────────── */
+  .confirm-overlay {
+    display: none; position: fixed; inset: 0;
+    background: rgba(15,15,15,0.5); z-index: 300;
+    align-items: center; justify-content: center; backdrop-filter: blur(3px);
+  }
+  .confirm-overlay.open { display: flex; }
+  .confirm-box {
+    background: #fff; border: 1.5px solid var(--border); padding: 2rem;
+    width: 340px; max-width: 90vw; box-shadow: 0 20px 60px rgba(15,15,15,0.25);
+    animation: slideUp 0.18s ease; text-align: center;
+  }
+  .confirm-icon {
+    width: 48px; height: 48px; background: #fdf2f0; border: 1.5px solid #f5c6c0;
+    border-radius: 50%; display: flex; align-items: center; justify-content: center;
+    margin: 0 auto 1rem;
+  }
+  .confirm-title {
+    font-family: 'DM Serif Display', serif; font-size: 1.2rem;
+    margin-bottom: 0.5rem; color: var(--ink);
+  }
+  .confirm-msg {
+    font-size: 0.78rem; color: var(--muted); line-height: 1.6;
+    margin-bottom: 1.4rem;
+  }
+  .confirm-msg strong { color: var(--ink); }
+  .confirm-btns { display: flex; gap: 0.7rem; justify-content: center; }
+  .confirm-no {
+    flex: 1; background: none; border: 1.5px solid var(--border);
+    padding: 0.6rem 1rem; font-family: 'DM Mono', monospace;
+    font-size: 0.78rem; letter-spacing: 0.05em; text-transform: uppercase;
+    cursor: pointer; color: var(--muted); transition: all 0.15s;
+  }
+  .confirm-no:hover { border-color: var(--ink); color: var(--ink); }
+  .confirm-yes {
+    flex: 1; background: #c0392b; color: #fff; border: none;
+    padding: 0.6rem 1rem; font-family: 'DM Mono', monospace;
+    font-size: 0.78rem; letter-spacing: 0.05em; text-transform: uppercase;
+    cursor: pointer; transition: background 0.15s;
+  }
+  .confirm-yes:hover { background: #a93226; }
 </style>
 </head>
 <body>
@@ -540,7 +582,7 @@
     <table>
       <thead>
         <tr>
-          <th style="width:220px">Artwork Files</th>
+          <th style="width:220px">Innovator</th>
           <th style="width:220px" class="ref-header">
             <div class="col-header-label">Reference Files</div>
             <div class="col-header-sub">PDF &amp; Images — saved to server</div>
@@ -591,7 +633,7 @@
       </select>
     </div>
     <div class="form-group">
-      <label>Artwork Files &nbsp;<span style="color:var(--muted);font-size:0.65rem;text-transform:none;letter-spacing:0;font-weight:400">(optional — multiple files allowed)</span></label>
+      <label>Innovator Files &nbsp;<span style="color:var(--muted);font-size:0.65rem;text-transform:none;letter-spacing:0;font-weight:400">(optional — multiple files allowed)</span></label>
       <div class="artwork-upload-zone" id="drop-zone">
         <input type="file" id="modal-file-input" accept=".cdr,.png,.jpg,.jpeg,.svg,.pdf,.ai,.webp" multiple onchange="handleModalFiles(this)" />
         <svg width="28" height="28" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24" style="opacity:0.35"><path d="M12 16V4m0 0-4 4m4-4 4 4"/><rect x="2" y="16" width="20" height="6" rx="1"/></svg>
@@ -946,17 +988,46 @@
     input.value = '';
   }
 
+  // ── CUSTOM CONFIRM DIALOG ────────────────────────────────────────
+  var _confirmCallback = null;
+  function showConfirm(title, msg, callback) {
+    document.getElementById('confirm-title').textContent = title;
+    document.getElementById('confirm-msg').innerHTML = msg;
+    _confirmCallback = callback;
+    document.getElementById('confirm-overlay').classList.add('open');
+  }
+  function closeConfirm(result) {
+    document.getElementById('confirm-overlay').classList.remove('open');
+    if (typeof _confirmCallback === 'function') {
+      var cb = _confirmCallback;
+      _confirmCallback = null;
+      cb(result);
+    }
+  }
+  document.getElementById('confirm-overlay').addEventListener('click', function() { closeConfirm(false); });
+  document.addEventListener('keydown', function(e) {
+    if (e.key === 'Escape' && document.getElementById('confirm-overlay').classList.contains('open')) closeConfirm(false);
+    if (e.key === 'Enter'  && document.getElementById('confirm-overlay').classList.contains('open')) closeConfirm(true);
+  });
+
   function deleteRefFile(pid, publicId) {
-    showStatus('saving', '⟳ Removing...');
-    fetch(API + '/products/' + pid + '/refs/' + encodeURIComponent(publicId), { method: 'DELETE' })
-      .then(function(r) { return r.json(); })
-      .then(function(updated) {
-        var idx = products.findIndex(function(x) { return x.id === updated.id; });
-        if (idx !== -1) products[idx] = updated;
-        renderTable();
-        showStatus('saved', '✓ Removed');
-      })
-      .catch(function() { showStatus('error', '✕ Failed'); });
+    showConfirm(
+      'Delete Reference File?',
+      'Are you sure you want to remove this reference file? <br><span style="opacity:0.6;font-size:0.72rem">This cannot be undone.</span>',
+      function(confirmed) {
+        if (!confirmed) return;
+        showStatus('saving', '⟳ Removing...');
+        fetch(API + '/products/' + pid + '/refs/' + encodeURIComponent(publicId), { method: 'DELETE' })
+          .then(function(r) { return r.json(); })
+          .then(function(updated) {
+            var idx = products.findIndex(function(x) { return String(x.id) === String(updated.id); });
+            if (idx !== -1) products[idx] = updated;
+            renderTable();
+            showStatus('saved', '✓ Removed');
+          })
+          .catch(function() { showStatus('error', '✕ Failed'); });
+      }
+    );
   }
 
   function openRefLightbox(pid, idx) {
@@ -1168,7 +1239,7 @@
     renderMobileCards();
   }
 
-  // ── QUICK ADD ARTWORK FILES ───────────────────────────────────────
+  // ── QUICK ADD INNOVATOR FILES ───────────────────────────────────────
   function quickAddFiles(pid, input) {
     var fd = new FormData();
     var p  = products.find(function(x) { return x.id === pid; });
@@ -1191,31 +1262,46 @@
     input.value = '';
   }
 
-  // ── DELETE ARTWORK FILE ───────────────────────────────────────────
+  // ── DELETE INNOVATOR FILE ─────────────────────────────────────────
   function deleteFile(pid, publicId) {
-    showStatus('saving', '⟳ Removing...');
-    fetch(API + '/products/' + pid + '/files/' + encodeURIComponent(publicId), { method: 'DELETE' })
-      .then(function(r) { return r.json(); })
-      .then(function(updated) {
-        var idx = products.findIndex(function(x) { return x.id === updated.id; });
-        if (idx !== -1) products[idx] = updated;
-        renderTable();
-        showStatus('saved', '✓ Saved');
-      })
-      .catch(function() { showStatus('error', '✕ Failed'); });
+    showConfirm(
+      'Delete Innovator File?',
+      'Are you sure you want to remove this file? <br><span style="opacity:0.6;font-size:0.72rem">This cannot be undone.</span>',
+      function(confirmed) {
+        if (!confirmed) return;
+        showStatus('saving', '⟳ Removing...');
+        fetch(API + '/products/' + pid + '/files/' + encodeURIComponent(publicId), { method: 'DELETE' })
+          .then(function(r) { return r.json(); })
+          .then(function(updated) {
+            var idx = products.findIndex(function(x) { return String(x.id) === String(updated.id); });
+            if (idx !== -1) products[idx] = updated;
+            renderTable();
+            showStatus('saved', '✓ Saved');
+          })
+          .catch(function() { showStatus('error', '✕ Failed'); });
+      }
+    );
   }
 
   // ── DELETE PRODUCT ────────────────────────────────────────────────
   function deleteProduct(pid) {
-    if (!confirm('Delete this product and all its files?')) return;
-    showStatus('saving', '⟳ Deleting...');
-    fetch(API + '/products/' + pid, { method: 'DELETE' })
-      .then(function() {
-        products = products.filter(function(p) { return p.id !== pid; });
-        renderTable();
-        showStatus('saved', '✓ Deleted');
-      })
-      .catch(function() { showStatus('error', '✕ Failed'); });
+    var p = products.find(function(x) { return x.id === pid; });
+    var pname = p ? p.name : 'this product';
+    showConfirm(
+      'Delete Product?',
+      'Are you sure you want to delete <strong>' + escHtml(pname) + '</strong> and all its files? <br><span style="opacity:0.6;font-size:0.72rem">This cannot be undone.</span>',
+      function(confirmed) {
+        if (!confirmed) return;
+        showStatus('saving', '⟳ Deleting...');
+        fetch(API + '/products/' + pid, { method: 'DELETE' })
+          .then(function() {
+            products = products.filter(function(p) { return p.id !== pid; });
+            renderTable();
+            showStatus('saved', '✓ Deleted');
+          })
+          .catch(function() { showStatus('error', '✕ Failed'); });
+      }
+    );
   }
 
   // ── DOWNLOAD ──────────────────────────────────────────────────────
@@ -1404,7 +1490,7 @@
       if (p.files && p.files.length > 0) {
         var artLabel = document.createElement('div');
         artLabel.className = 'mc-section-label';
-        artLabel.textContent = 'Artwork Files';
+        artLabel.textContent = 'Innovator';
         card.appendChild(artLabel);
         var artStrip = document.createElement('div');
         artStrip.className = 'thumbs-strip';
@@ -1624,5 +1710,22 @@
 
   loadProducts();
 </script>
+<!-- CONFIRM DIALOG -->
+<div class="confirm-overlay" id="confirm-overlay">
+  <div class="confirm-box" onclick="event.stopPropagation()">
+    <div class="confirm-icon">
+      <svg width="20" height="20" fill="none" stroke="#c0392b" stroke-width="2" viewBox="0 0 24 24">
+        <path d="M3 6h18M8 6V4h8v2M19 6l-1 14H6L5 6"/>
+      </svg>
+    </div>
+    <div class="confirm-title" id="confirm-title">Are you sure?</div>
+    <div class="confirm-msg" id="confirm-msg">This action cannot be undone.</div>
+    <div class="confirm-btns">
+      <button class="confirm-no" id="confirm-no" onclick="closeConfirm(false)">No, Cancel</button>
+      <button class="confirm-yes" id="confirm-yes" onclick="closeConfirm(true)">Yes, Delete</button>
+    </div>
+  </div>
+</div>
+
 </body>
 </html>
