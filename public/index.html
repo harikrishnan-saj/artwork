@@ -391,12 +391,76 @@
   }
   .lightbox-dl:hover { background: rgba(255,255,255,0.2); }
 
-  @media (max-width: 600px) {
-    header { padding: 1.5rem; flex-direction: column; align-items: flex-start; }
-    main { padding: 1.5rem; }
-    header h1 { font-size: 1.8rem; }
-    .search-bar-wrap { flex-direction: column; }
-    .search-input-wrap { max-width: 100%; }
+  /* ── MOBILE CARD LAYOUT ───────────────────────────────────────── */
+  .mobile-card {
+    background: #fff; border: 1.5px solid var(--border);
+    margin-bottom: 1rem; padding: 1rem;
+    box-shadow: 0 2px 8px rgba(15,15,15,0.06);
+  }
+  .mc-header {
+    display: flex; justify-content: space-between; align-items: flex-start;
+    margin-bottom: 0.8rem; gap: 0.5rem;
+  }
+  .mc-name { font-size: 0.9rem; font-weight: 700; flex: 1; line-height: 1.3; }
+  .mc-brand {
+    display: inline-block; background: var(--cream); border: 1px solid var(--border);
+    padding: 2px 8px; font-size: 0.72rem; letter-spacing: 0.04em; font-weight: 700;
+    white-space: nowrap;
+  }
+  .mc-sourced-row {
+    display: flex; align-items: center; gap: 0.6rem;
+    margin-bottom: 0.8rem; font-size: 0.7rem; color: var(--muted);
+    letter-spacing: 0.06em; text-transform: uppercase;
+  }
+  .mc-section-label {
+    font-size: 0.62rem; letter-spacing: 0.1em; text-transform: uppercase;
+    color: var(--muted); margin-bottom: 0.4rem; margin-top: 0.8rem;
+  }
+  .mc-divider {
+    border: none; border-top: 1px solid var(--cream); margin: 0.8rem 0;
+  }
+  .mc-actions {
+    display: flex; gap: 0.5rem; flex-wrap: wrap; margin-top: 0.8rem;
+  }
+  .mc-actions .btn-icon { font-size: 0.68rem; padding: 0.4rem 0.7rem; }
+
+  @media (max-width: 768px) {
+    /* Header */
+    header { padding: 1.2rem 1rem; flex-direction: column; align-items: flex-start; gap: 1rem; }
+    header h1 { font-size: 1.6rem; }
+    header p { font-size: 0.7rem; }
+    .header-actions { width: 100%; display: grid; grid-template-columns: 1fr 1fr; gap: 0.5rem; }
+    .add-btn { grid-column: 1 / -1; text-align: center; padding: 0.7rem; }
+    .hdr-btn { justify-content: center; padding: 0.6rem 0.5rem; font-size: 0.72rem; }
+
+    /* Main */
+    main { padding: 1rem; }
+
+    /* Search bar */
+    .search-bar-wrap { flex-direction: column; gap: 0.5rem; }
+    .search-input-wrap { max-width: 100%; min-width: unset; }
+    .filter-select { width: 100%; }
+
+    /* Hide table, show cards */
+    .table-wrap { display: none; }
+    #mobile-cards { display: block; }
+
+    /* Modals full screen */
+    .modal { width: 100% !important; max-width: 100vw; margin: 0; padding: 1.5rem 1rem;
+             max-height: 100vh; border-radius: 0; }
+    .modal-overlay { align-items: flex-end; }
+    .modal-actions { flex-direction: column-reverse; }
+    .modal-actions .btn-save,
+    .modal-actions .btn-cancel { width: 100%; text-align: center; }
+
+    /* Lightbox */
+    .lightbox img { max-width: 95vw; max-height: 65vh; }
+    .lightbox-cdr { padding: 1.5rem 1rem; }
+    .lightbox-cdr .cdr-product { font-size: 1.1rem; }
+  }
+
+  @media (min-width: 769px) {
+    #mobile-cards { display: none; }
   }
 </style>
 </head>
@@ -474,6 +538,9 @@
       </tbody>
     </table>
   </div>
+
+  <!-- MOBILE CARDS (shown on small screens instead of table) -->
+  <div id="mobile-cards"></div>
 </main>
 
 <!-- MODAL -->
@@ -900,6 +967,7 @@
         + '</div>';
       noRow.appendChild(noTd);
       tbody.appendChild(noRow);
+      renderMobileCards();
       return;
     }
 
@@ -1070,6 +1138,7 @@
       tr.appendChild(tdAct);
       tbody.appendChild(tr);
     });
+    renderMobileCards();
   }
 
   // ── QUICK ADD ARTWORK FILES ───────────────────────────────────────
@@ -1253,6 +1322,175 @@
 
   function escHtml(s) {
     return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+  }
+
+  // ── MOBILE CARD RENDERER ──────────────────────────────────────────
+  function renderMobileCards() {
+    var container = document.getElementById('mobile-cards');
+    if (!container) return;
+    container.innerHTML = '';
+    var filtered = getFilteredProducts();
+
+    if (filtered.length === 0) {
+      container.innerHTML = '<div style="text-align:center;padding:3rem;color:var(--muted);font-size:0.8rem">'
+        + (products.length === 0 ? 'No products yet. Tap <strong>+ Add Product</strong> to get started.' : 'No products match the current filters.')
+        + '</div>';
+      return;
+    }
+
+    filtered.forEach(function(p) {
+      var card = document.createElement('div');
+      card.className = 'mobile-card';
+
+      // Header — name + brand
+      var mcHeader = '<div class="mc-header">'
+        + '<div class="mc-name">' + highlight(p.name, searchQuery) + '</div>'
+        + (p.brand ? '<span class="mc-brand">' + highlight(p.brand, searchQuery) + '</span>' : '')
+        + '</div>';
+
+      // Sourced row
+      var sourcedHtml = '<div class="mc-sourced-row">Sourced: ';
+      var sel = document.createElement('select');
+      sel.className = 'sourced-select' + (p.sourced === 'yes' ? ' val-yes' : p.sourced === 'no' ? ' val-no' : '');
+      sel.innerHTML = '<option value="">—</option><option value="yes">Yes</option><option value="no">No</option>';
+      sel.value = p.sourced || '';
+      card.innerHTML = mcHeader;
+
+      // Sourced inline
+      var sourcedRow = document.createElement('div');
+      sourcedRow.className = 'mc-sourced-row';
+      sourcedRow.appendChild(document.createTextNode('Sourced: '));
+      var mSel = document.createElement('select');
+      mSel.className = 'sourced-select' + (p.sourced === 'yes' ? ' val-yes' : p.sourced === 'no' ? ' val-no' : '');
+      mSel.innerHTML = '<option value="">—</option><option value="yes">Yes</option><option value="no">No</option>';
+      mSel.value = p.sourced || '';
+      (function(pid) {
+        mSel.onchange = function() {
+          mSel.className = 'sourced-select' + (mSel.value === 'yes' ? ' val-yes' : mSel.value === 'no' ? ' val-no' : '');
+          updateSourced(pid, mSel.value);
+        };
+      })(p.id);
+      sourcedRow.appendChild(mSel);
+      card.appendChild(sourcedRow);
+
+      // Artwork files
+      if (p.files && p.files.length > 0) {
+        var artLabel = document.createElement('div');
+        artLabel.className = 'mc-section-label';
+        artLabel.textContent = 'Artwork Files';
+        card.appendChild(artLabel);
+        var artStrip = document.createElement('div');
+        artStrip.className = 'thumbs-strip';
+        p.files.forEach(function(f, fIdx) {
+          var tw = document.createElement('div');
+          tw.className = 'thumb-wrap';
+          tw.title = f.originalName;
+          var isImg = /\.(png|jpg|jpeg|svg|webp)$/i.test(f.originalName);
+          var ext   = f.originalName.split('.').pop().toUpperCase();
+          if (isImg && f.url) {
+            tw.innerHTML = '<img src="' + f.url + '" alt="' + escHtml(f.originalName) + '" />';
+          } else {
+            tw.innerHTML = '<div class="thumb-placeholder"><svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg><span class="cdr-badge">' + ext + '</span></div>';
+          }
+          var delBtn = document.createElement('button');
+          delBtn.className = 'thumb-del';
+          delBtn.innerHTML = '&#10005;';
+          (function(pid, pid2) {
+            delBtn.onclick = function(e) { e.stopPropagation(); deleteFile(pid, pid2); };
+            tw.onclick = function() { lbMode = 'artwork'; openLightbox(p.id, fIdx); };
+          })(p.id, f.publicId);
+          tw.appendChild(delBtn);
+          artStrip.appendChild(tw);
+        });
+        // Add more button
+        var addLabel = document.createElement('label');
+        addLabel.className = 'thumb-add';
+        var addInput = document.createElement('input');
+        addInput.type = 'file';
+        addInput.accept = '.cdr,.png,.jpg,.jpeg,.svg,.pdf,.ai,.webp';
+        addInput.multiple = true;
+        (function(pid) { addInput.onchange = function() { quickAddFiles(pid, addInput); }; })(p.id);
+        addLabel.innerHTML = '<svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>';
+        addLabel.appendChild(addInput);
+        artStrip.appendChild(addLabel);
+        card.appendChild(artStrip);
+      }
+
+      // Reference files
+      var refFiles = p.refFiles || [];
+      var refLabel = document.createElement('div');
+      refLabel.className = 'mc-section-label';
+      refLabel.textContent = 'Reference Files';
+      card.appendChild(refLabel);
+      var refStrip = document.createElement('div');
+      refStrip.className = 'ref-strip';
+      refFiles.forEach(function(rf, rfIdx) {
+        var rw = document.createElement('div');
+        rw.className = 'ref-thumb-wrap';
+        rw.title = rf.originalName;
+        var isImg = /\.(png|jpg|jpeg|svg|webp)$/i.test(rf.originalName);
+        var isPDF = /\.pdf$/i.test(rf.originalName);
+        var ext = rf.originalName.split('.').pop().toUpperCase();
+        if (isImg && rf.url) {
+          rw.innerHTML = '<img src="' + rf.url + '" alt="' + escHtml(rf.originalName) + '" />';
+        } else if (isPDF) {
+          rw.innerHTML = '<div class="thumb-placeholder"><svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg><span class="ref-pdf-badge">PDF</span></div>';
+        } else {
+          rw.innerHTML = '<div class="thumb-placeholder"><svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg><span class="cdr-badge">' + ext + '</span></div>';
+        }
+        var delBtn = document.createElement('button');
+        delBtn.className = 'ref-thumb-del';
+        delBtn.innerHTML = '&#10005;';
+        (function(pid, rpid) {
+          delBtn.onclick = function(e) { e.stopPropagation(); deleteRefFile(pid, rpid); };
+          rw.onclick = function() { openRefLightbox(pid, rfIdx); };
+        })(p.id, rf.publicId);
+        rw.appendChild(delBtn);
+        refStrip.appendChild(rw);
+      });
+      var refAddLabel = document.createElement('label');
+      refAddLabel.className = 'ref-add';
+      var refInput = document.createElement('input');
+      refInput.type = 'file';
+      refInput.accept = '.pdf,.png,.jpg,.jpeg,.svg,.webp';
+      refInput.multiple = true;
+      (function(pid) { refInput.onchange = function() { handleRefUpload(pid, refInput); }; })(p.id);
+      refAddLabel.innerHTML = '<svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg><span class="ref-add-label">PDF/IMG</span>';
+      refAddLabel.appendChild(refInput);
+      refStrip.appendChild(refAddLabel);
+      card.appendChild(refStrip);
+
+      // Divider + Actions
+      var hr = document.createElement('hr');
+      hr.className = 'mc-divider';
+      card.appendChild(hr);
+
+      var actDiv = document.createElement('div');
+      actDiv.className = 'mc-actions';
+
+      var editBtn = document.createElement('button');
+      editBtn.className = 'btn-icon btn-edit';
+      editBtn.innerHTML = '<svg width="12" height="12" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg> Edit';
+      (function(pid) { editBtn.onclick = function() { openEditModal(pid); }; })(p.id);
+      actDiv.appendChild(editBtn);
+
+      if (p.files && p.files.length > 0) {
+        var dlBtn = document.createElement('button');
+        dlBtn.className = 'btn-icon';
+        dlBtn.innerHTML = '<svg width="12" height="12" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path d="M12 4v12m0 0-4-4m4 4 4-4"/><rect x="3" y="18" width="18" height="3" rx="1"/></svg> Download';
+        (function(pid) { dlBtn.onclick = function() { downloadAll(pid); }; })(p.id);
+        actDiv.appendChild(dlBtn);
+      }
+
+      var delBtn2 = document.createElement('button');
+      delBtn2.className = 'btn-icon btn-del-row';
+      delBtn2.innerHTML = '<svg width="12" height="12" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path d="M3 6h18M8 6V4h8v2M19 6l-1 14H6L5 6"/></svg> Delete';
+      (function(pid) { delBtn2.onclick = function() { deleteProduct(pid); }; })(p.id);
+      actDiv.appendChild(delBtn2);
+
+      card.appendChild(actDiv);
+      container.appendChild(card);
+    });
   }
 
   // ── EXPORT ───────────────────────────────────────────────────────
