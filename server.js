@@ -43,8 +43,6 @@ async function connectDB() {
   const client = new MongoClient(uri, {
     serverSelectionTimeoutMS: 15000,
     connectTimeoutMS:         15000,
-    tls:                      true,
-    tlsAllowInvalidCertificates: true,
   });
   await client.connect();
   db = client.db('artwork_manager');
