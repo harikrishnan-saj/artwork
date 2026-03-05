@@ -394,69 +394,96 @@
   /* ── MOBILE CARD LAYOUT ───────────────────────────────────────── */
   .mobile-card {
     background: #fff; border: 1.5px solid var(--border);
-    margin-bottom: 1rem; padding: 1rem;
+    margin-bottom: 0.9rem; padding: 0.9rem;
     box-shadow: 0 2px 8px rgba(15,15,15,0.06);
+    overflow: hidden;
   }
   .mc-header {
     display: flex; justify-content: space-between; align-items: flex-start;
-    margin-bottom: 0.8rem; gap: 0.5rem;
+    margin-bottom: 0.5rem; gap: 0.5rem; flex-wrap: wrap;
   }
-  .mc-name { font-size: 0.9rem; font-weight: 700; flex: 1; line-height: 1.3; }
+  .mc-name {
+    font-size: 0.82rem; font-weight: 700; flex: 1; line-height: 1.4;
+    min-width: 0; word-break: break-word;
+  }
   .mc-brand {
     display: inline-block; background: var(--cream); border: 1px solid var(--border);
-    padding: 2px 8px; font-size: 0.72rem; letter-spacing: 0.04em; font-weight: 700;
-    white-space: nowrap;
+    padding: 2px 7px; font-size: 0.68rem; letter-spacing: 0.04em; font-weight: 700;
+    white-space: nowrap; flex-shrink: 0; max-width: 120px;
+    overflow: hidden; text-overflow: ellipsis;
   }
   .mc-sourced-row {
-    display: flex; align-items: center; gap: 0.6rem;
-    margin-bottom: 0.8rem; font-size: 0.7rem; color: var(--muted);
+    display: flex; align-items: center; gap: 0.5rem;
+    margin-bottom: 0.6rem; font-size: 0.65rem; color: var(--muted);
     letter-spacing: 0.06em; text-transform: uppercase;
   }
   .mc-section-label {
-    font-size: 0.62rem; letter-spacing: 0.1em; text-transform: uppercase;
-    color: var(--muted); margin-bottom: 0.4rem; margin-top: 0.8rem;
+    font-size: 0.58rem; letter-spacing: 0.1em; text-transform: uppercase;
+    color: var(--muted); margin-bottom: 0.35rem; margin-top: 0.7rem;
   }
   .mc-divider {
-    border: none; border-top: 1px solid var(--cream); margin: 0.8rem 0;
+    border: none; border-top: 1px solid var(--cream); margin: 0.7rem 0 0.5rem;
   }
   .mc-actions {
-    display: flex; gap: 0.5rem; flex-wrap: wrap; margin-top: 0.8rem;
+    display: flex; gap: 0.4rem; flex-wrap: wrap;
   }
-  .mc-actions .btn-icon { font-size: 0.68rem; padding: 0.4rem 0.7rem; }
+  .mc-actions .btn-icon { font-size: 0.65rem; padding: 0.38rem 0.6rem; }
 
   @media (max-width: 768px) {
     /* Header */
-    header { padding: 1.2rem 1rem; flex-direction: column; align-items: flex-start; gap: 1rem; }
-    header h1 { font-size: 1.6rem; }
-    header p { font-size: 0.7rem; }
+    header { padding: 1rem; flex-direction: column; align-items: flex-start; gap: 0.8rem; }
+    header h1 { font-size: 1.45rem; }
+    header p { font-size: 0.68rem; }
     .header-actions { width: 100%; display: grid; grid-template-columns: 1fr 1fr; gap: 0.5rem; }
-    .add-btn { grid-column: 1 / -1; text-align: center; padding: 0.7rem; }
-    .hdr-btn { justify-content: center; padding: 0.6rem 0.5rem; font-size: 0.72rem; }
+    .add-btn { grid-column: 1 / -1; text-align: center; padding: 0.65rem; font-size: 0.78rem; }
+    .hdr-btn { justify-content: center; padding: 0.55rem 0.4rem; font-size: 0.68rem; }
+    .hdr-btn svg { width: 11px; height: 11px; }
 
     /* Main */
-    main { padding: 1rem; }
+    main { padding: 0.8rem; }
 
-    /* Search bar */
-    .search-bar-wrap { flex-direction: column; gap: 0.5rem; }
+    /* Meta bar */
+    .meta-bar { margin-bottom: 0.7rem; }
+    .meta-bar span { font-size: 0.68rem; }
+
+    /* Search bar — search full width, filters side by side below */
+    .search-bar-wrap { flex-direction: column; gap: 0.45rem; }
     .search-input-wrap { max-width: 100%; min-width: unset; }
-    .filter-select { width: 100%; }
+    .search-bar-wrap .filter-select { width: 100%; }
+    /* Put the two selects side by side */
+    #search-filter, #sourced-filter {
+      width: calc(50% - 0.225rem);
+      display: inline-block;
+    }
+    .search-bar-wrap { flex-wrap: wrap; flex-direction: row; }
+    .search-input-wrap { flex: 0 0 100%; max-width: 100%; }
 
     /* Hide table, show cards */
     .table-wrap { display: none; }
     #mobile-cards { display: block; }
 
-    /* Modals full screen */
-    .modal { width: 100% !important; max-width: 100vw; margin: 0; padding: 1.5rem 1rem;
-             max-height: 100vh; border-radius: 0; }
-    .modal-overlay { align-items: flex-end; }
-    .modal-actions { flex-direction: column-reverse; }
+    /* Thumbs smaller on mobile */
+    .thumb-wrap, .thumb-add { width: 46px; height: 46px; }
+    .ref-thumb-wrap, .ref-add { width: 46px; height: 46px; }
+
+    /* Modals slide up from bottom */
+    .modal {
+      width: 100% !important; max-width: 100vw; margin: 0;
+      padding: 1.4rem 1rem 2rem; max-height: 92vh;
+      border-radius: 0; border-left: none; border-right: none; border-bottom: none;
+    }
+    .modal h2 { font-size: 1.3rem; margin-bottom: 1.2rem; }
+    .modal-overlay { align-items: flex-end; padding: 0; }
+    .modal-actions { flex-direction: column-reverse; gap: 0.5rem; }
     .modal-actions .btn-save,
-    .modal-actions .btn-cancel { width: 100%; text-align: center; }
+    .modal-actions .btn-cancel { width: 100%; text-align: center; padding: 0.75rem; }
 
     /* Lightbox */
-    .lightbox img { max-width: 95vw; max-height: 65vh; }
-    .lightbox-cdr { padding: 1.5rem 1rem; }
-    .lightbox-cdr .cdr-product { font-size: 1.1rem; }
+    .lightbox img { max-width: 96vw; max-height: 60vh; }
+    .lightbox-cdr { padding: 1.2rem 0.8rem; }
+    .lightbox-cdr .cdr-product { font-size: 1rem; text-align: center; }
+    .lightbox-close { font-size: 0.85rem; top: -2.2rem; }
+    .lb-nav-btn { padding: 0.35rem 0.7rem; font-size: 0.68rem; }
   }
 
   @media (min-width: 769px) {
