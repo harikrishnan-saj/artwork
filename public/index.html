@@ -1344,7 +1344,9 @@
       .then(function(data) {
         if (data.error) throw new Error(data.error);
         prog.className = 'import-progress visible success';
-        prog.textContent = '✓ Restored ' + data.productCount + ' products successfully.';
+        var msg = '✓ Restored ' + data.productCount + ' products successfully.';
+        if (data.filesUploaded > 0) msg += ' ' + data.filesUploaded + ' images uploaded to Cloudinary.';
+        prog.textContent = msg;
         loadProducts();
         setTimeout(function() { closeImportModal(); }, 1800);
       })

@@ -238,14 +238,62 @@ app.post('/api/import', importUpload.single('backup'), async (req, res) => {
   if (!req.file) return res.status(400).json({ error: 'No file uploaded' });
   try {
     const zip = await unzipper.Open.buffer(req.file.buffer);
+
     let importedData = null;
+    // Map of original storedName → buffer (for old-style local backups with actual files)
+    const fileBuffers = {};
+
+    // First pass — collect everything from zip
     for (const entry of zip.files) {
       if (entry.path === 'products.json') {
         importedData = JSON.parse((await entry.buffer()).toString('utf8'));
+      } else if (entry.path.startsWith('uploads/') || entry.path.startsWith('ref-uploads/')) {
+        // Old local backup format — has actual image files inside
+        const buf = await entry.buffer();
+        const basename = entry.path.split('/').pop();
+        fileBuffers[basename] = { buffer: buf, path: entry.path };
       }
     }
+
     if (!importedData || !Array.isArray(importedData.products)) {
       return res.status(400).json({ error: 'Invalid backup: missing products.json' });
+    }
+
+    // If zip contains actual image files, upload them to Cloudinary
+    // and build a map of storedName → new Cloudinary file object
+    const cloudinaryMap = {};
+    const uploadJobs = Object.entries(fileBuffers).map(async ([basename, { buffer, path: zipPath }]) => {
+      try {
+        const folder = zipPath.startsWith('ref-uploads/') ? 'artwork_manager/refs' : 'artwork_manager/artwork';
+        const result = await uploadToCloudinary(buffer, basename, folder);
+        cloudinaryMap[basename] = result;
+        console.log('  ☁️  Uploaded to Cloudinary:', basename);
+      } catch (e) {
+        console.warn('  ⚠️  Failed to upload', basename, e.message);
+      }
+    });
+    await Promise.all(uploadJobs);
+
+    // Replace storedName-based file refs with Cloudinary URLs if we uploaded files
+    if (Object.keys(cloudinaryMap).length > 0) {
+      importedData.products = importedData.products.map(p => {
+        p.files = (p.files || []).map(f => {
+          const key = f.storedName || f.publicId;
+          const basename = key ? key.split('/').pop() : null;
+          if (basename && cloudinaryMap[basename]) return cloudinaryMap[basename];
+          // Already has a Cloudinary url — keep as is
+          if (f.url) return f;
+          return f;
+        });
+        p.refFiles = (p.refFiles || []).map(f => {
+          const key = f.storedName || f.publicId;
+          const basename = key ? key.split('/').pop() : null;
+          if (basename && cloudinaryMap[basename]) return cloudinaryMap[basename];
+          if (f.url) return f;
+          return f;
+        });
+        return p;
+      });
     }
 
     const mode = req.query.mode || 'replace';
@@ -262,7 +310,11 @@ app.post('/api/import', importUpload.single('backup'), async (req, res) => {
     }
 
     writeDB(db);
-    res.json({ ok: true, productCount: db.products.length });
+    res.json({
+      ok: true,
+      productCount:   db.products.length,
+      filesUploaded:  Object.keys(cloudinaryMap).length,
+    });
   } catch (e) { res.status(500).json({ error: 'Import failed: ' + e.message }); }
 });
 
