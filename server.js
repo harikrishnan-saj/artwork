@@ -369,6 +369,30 @@ app.post('/api/import', importUpload.single('backup'), async (req, res) => {
   } catch (e) { res.status(500).json({ error: 'Import failed: ' + e.message }); }
 });
 
+// ── PROXY DOWNLOAD — routes file download through server to avoid CORS ──
+app.get('/api/download', async (req, res) => {
+  const url      = req.query.url;
+  const filename = req.query.filename || 'file';
+  if (!url) return res.status(400).send('Missing url');
+
+  try {
+    const https  = require('https');
+    const http   = require('http');
+    const client = url.startsWith('https') ? https : http;
+
+    client.get(url, function(fileRes) {
+      res.setHeader('Content-Disposition', 'attachment; filename="' + filename.replace(/"/g, '') + '"');
+      res.setHeader('Content-Type', fileRes.headers['content-type'] || 'application/octet-stream');
+      fileRes.pipe(res);
+    }).on('error', function(err) {
+      console.error('Proxy download error:', err.message);
+      res.status(500).send('Download failed');
+    });
+  } catch(e) {
+    res.status(500).send('Download failed: ' + e.message);
+  }
+});
+
 // ── CATCH ALL — serve index.html for any non-API route ───────────
 app.get('*', (req, res) => {
   const indexFile = path.join(__dirname, 'public', 'index.html');
