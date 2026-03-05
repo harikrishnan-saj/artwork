@@ -706,8 +706,31 @@
   </div>
 </div>
 
+
+<!-- CONFIRM DIALOG -->
+<div class="confirm-overlay" id="confirm-overlay">
+  <div class="confirm-box" onclick="event.stopPropagation()">
+    <div class="confirm-icon">
+      <svg width="20" height="20" fill="none" stroke="#c0392b" stroke-width="2" viewBox="0 0 24 24">
+        <path d="M3 6h18M8 6V4h8v2M19 6l-1 14H6L5 6"/>
+      </svg>
+    </div>
+    <div class="confirm-title" id="confirm-title">Are you sure?</div>
+    <div class="confirm-msg" id="confirm-msg">This action cannot be undone.</div>
+    <div class="confirm-btns">
+      <button class="confirm-no" id="confirm-no" onclick="closeConfirm(false)">No, Cancel</button>
+      <button class="confirm-yes" id="confirm-yes" onclick="closeConfirm(true)">Yes, Delete</button>
+    </div>
+  </div>
+</div>
 <script>
-  var API = ''; // set dynamically in loadProducts via getApiBase()
+  // Detect correct API base — works on Railway (same origin) and localhost
+  function getApiBase() {
+    var h = location.hostname;
+    if (h === 'localhost' || h === '127.0.0.1') return 'http://' + h + ':3000/api';
+    return location.origin + '/api';
+  }
+  var API = getApiBase(); // set immediately so all functions can use it
   var products  = [];
   var editingId = null;
   var searchQuery = '';
@@ -786,36 +809,32 @@
   }
 
   // ── LOAD FROM SERVER ──────────────────────────────────────────────
-  // Detect correct API base — works on Railway (same origin) and localhost
-  function getApiBase() {
-    var h = location.hostname;
-    if (h === 'localhost' || h === '127.0.0.1') return 'http://' + h + ':3000/api';
-    return location.origin + '/api';
-  }
-  API = getApiBase();
-
   function loadProducts() {
     var label = document.getElementById('count-label');
     label.textContent = 'Loading...';
-    fetch(API + '/products', { cache: 'no-store' })
+    var url = API + '/products?t=' + Date.now();
+    fetch(url, { cache: 'no-store' })
       .then(function(r) {
-        if (!r.ok) throw new Error('HTTP ' + r.status + ' from ' + API);
+        if (!r.ok) return r.text().then(function(t) {
+          throw new Error('HTTP ' + r.status + ' — ' + t.slice(0, 200));
+        });
         return r.json();
       })
       .then(function(data) {
-        if (!Array.isArray(data)) throw new Error('Expected array, got: ' + typeof data);
+        if (!Array.isArray(data)) throw new Error('Expected array, got: ' + JSON.stringify(data).slice(0, 100));
         products = data;
         renderTable();
       })
       .catch(function(err) {
-        label.innerHTML = '⚠ Could not load — ' + err.message
+        var msg = err.message || String(err);
+        label.innerHTML = '<span style="color:var(--accent)">⚠ ' + escHtml(msg) + '</span>'
           + ' &nbsp;<button onclick="loadProducts()" style="font-family:inherit;font-size:0.72rem;'
           + 'padding:2px 10px;cursor:pointer;border:1.5px solid var(--accent);background:none;'
           + 'color:var(--accent);">↺ Retry</button>'
           + ' &nbsp;<button onclick="openImportModal()" style="font-family:inherit;font-size:0.72rem;'
           + 'padding:2px 10px;cursor:pointer;border:1.5px solid var(--accent2);background:none;'
-          + 'color:var(--accent2);">↑ Import Backup</button>';
-        console.error('loadProducts failed:', err);
+          + 'color:var(--accent2);">↑ Import</button>';
+        console.error('loadProducts failed. URL tried:', url, 'Error:', err);
       });
   }
 
@@ -1754,22 +1773,5 @@
 
   loadProducts();
 </script>
-<!-- CONFIRM DIALOG -->
-<div class="confirm-overlay" id="confirm-overlay">
-  <div class="confirm-box" onclick="event.stopPropagation()">
-    <div class="confirm-icon">
-      <svg width="20" height="20" fill="none" stroke="#c0392b" stroke-width="2" viewBox="0 0 24 24">
-        <path d="M3 6h18M8 6V4h8v2M19 6l-1 14H6L5 6"/>
-      </svg>
-    </div>
-    <div class="confirm-title" id="confirm-title">Are you sure?</div>
-    <div class="confirm-msg" id="confirm-msg">This action cannot be undone.</div>
-    <div class="confirm-btns">
-      <button class="confirm-no" id="confirm-no" onclick="closeConfirm(false)">No, Cancel</button>
-      <button class="confirm-yes" id="confirm-yes" onclick="closeConfirm(true)">Yes, Delete</button>
-    </div>
-  </div>
-</div>
-
 </body>
 </html>

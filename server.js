@@ -32,6 +32,7 @@ function readDB() {
 function writeDB(data) {
   try {
     fs.writeFileSync(DB_FILE, JSON.stringify(data, null, 2), 'utf8');
+    console.log('  💾  Saved', (data.products || []).length, 'products to', DB_FILE);
   } catch(e) {
     console.error('writeDB error:', e.message, '| DB_FILE:', DB_FILE);
     throw e;
@@ -104,7 +105,10 @@ app.get('/api/health', (req, res) => {
 // GET all products
 app.get('/api/products', (req, res) => {
   try {
+    res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate');
+    res.setHeader('Pragma', 'no-cache');
     const db = readDB();
+    console.log('GET /api/products — returning', (db.products || []).length, 'products from', DB_FILE);
     res.json(db.products || []);
   } catch(e) {
     console.error('GET /api/products error:', e.message);
@@ -348,11 +352,22 @@ app.post('/api/import', importUpload.single('backup'), async (req, res) => {
   } catch (e) { res.status(500).json({ error: 'Import failed: ' + e.message }); }
 });
 
+// ── CATCH ALL — serve index.html for any non-API route ───────────
+app.get('*', (req, res) => {
+  const indexFile = path.join(__dirname, 'public', 'index.html');
+  if (fs.existsSync(indexFile)) {
+    res.sendFile(indexFile);
+  } else {
+    res.status(404).send('index.html not found at ' + indexFile);
+  }
+});
+
 // ── START ─────────────────────────────────────────────────────────
 app.listen(PORT, () => {
   console.log('');
   console.log('  ✅  Product Manager running at http://localhost:' + PORT);
   console.log('  📁  Data stored in: ' + DATA_DIR);
+  console.log('  📄  index.html at: ' + path.join(__dirname, 'public', 'index.html'));
   console.log('  ☁️   Files stored on: Cloudinary');
   console.log('');
 });
