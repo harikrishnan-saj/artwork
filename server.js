@@ -50,9 +50,9 @@ function uploadToCloudinary(buffer, originalName, folder) {
     const ext          = path.extname(safeName).toLowerCase();
     const nameNoExt    = path.basename(safeName, ext);
     const isImage      = ['.png','.jpg','.jpeg','.svg','.webp','.gif'].includes(ext);
-    const isPDF        = ext === '.pdf';
-    // CDR, AI, and all other non-image/pdf files go as raw
-    const resourceType = (isImage || isPDF) ? 'auto' : 'raw';
+    // PDFs and everything else go as raw — never use 'auto' for PDFs
+    // because Cloudinary stores them under /image/upload/ which breaks downloads
+    const resourceType = isImage ? 'image' : 'raw';
 
     // Force public_id to include the extension so Cloudinary can't rename CDR→zip
     // e.g. "artwork_manager/artwork/myfile_cdr" with format locked
