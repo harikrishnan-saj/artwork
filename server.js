@@ -54,10 +54,10 @@ function uploadToCloudinary(buffer, originalName, folder) {
     // because Cloudinary stores them under /image/upload/ which breaks downloads
     const resourceType = isImage ? 'image' : 'raw';
 
-    // Force public_id to include the extension so Cloudinary can't rename CDR→zip
-    // e.g. "artwork_manager/artwork/myfile_cdr" with format locked
-    const uniqueSuffix = Date.now() + '_' + Math.round(Math.random() * 1e4);
-    const forcedPublicId = folder + '/' + nameNoExt + '_' + uniqueSuffix + ext.replace('.', '_');
+    // Sanitize filename for Cloudinary public_id — remove all special chars
+    const uniqueSuffix  = Date.now() + '_' + Math.round(Math.random() * 1e4);
+    const safeNameNoExt = nameNoExt.replace(/[^a-zA-Z0-9_-]/g, '_');
+    const forcedPublicId = folder + '/' + safeNameNoExt + '_' + uniqueSuffix;
 
     const stream = cloudinary.uploader.upload_stream(
       {
