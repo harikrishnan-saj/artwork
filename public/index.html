@@ -1384,13 +1384,15 @@
   }
 
   function downloadFile(url, originalName) {
+    if (!url) { console.warn('downloadFile: no url'); return; }
     triggerDownload(url, originalName);
   }
 
   function downloadRefFile(pid, idx) {
-    var p = products.find(function(x) { return x.id === pid; });
+    // pid may come as string from onclick attr — compare loosely
+    var p = products.find(function(x) { return String(x.id) === String(pid); });
     var rf = p && (p.refFiles || [])[idx];
-    if (!rf) return;
+    if (!rf) { console.warn('downloadRefFile: no file found', pid, idx); return; }
     triggerDownload(rf.url, rf.originalName);
   }
 
