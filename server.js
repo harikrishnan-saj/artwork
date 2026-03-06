@@ -376,7 +376,25 @@ app.get('/api/download', async (req, res) => {
   if (!url) return res.status(400).send('Missing url');
 
   try {
-    const response = await fetch(url);
+    // Try the URL as-is first, then fallback between raw/image if 404
+    async function tryFetch(targetUrl) {
+      const r = await fetch(targetUrl);
+      if (r.ok) return r;
+      // If 404, try switching between /raw/upload/ and /image/upload/
+      if (r.status === 404) {
+        let altUrl = targetUrl;
+        if (targetUrl.includes('/raw/upload/'))   altUrl = targetUrl.replace('/raw/upload/',   '/image/upload/');
+        else if (targetUrl.includes('/image/upload/')) altUrl = targetUrl.replace('/image/upload/', '/raw/upload/');
+        if (altUrl !== targetUrl) {
+          console.log('Proxy: trying alt URL', altUrl);
+          const r2 = await fetch(altUrl);
+          if (r2.ok) return r2;
+        }
+      }
+      return r; // return original failed response
+    }
+
+    const response = await tryFetch(url);
     if (!response.ok) {
       console.error('Proxy upstream error:', response.status, url);
       return res.status(response.status).send('Upstream error: ' + response.status);
@@ -386,10 +404,9 @@ app.get('/api/download', async (req, res) => {
     res.setHeader('Content-Disposition', 'attachment; filename="' + safeFilename + '"');
     res.setHeader('Content-Type', 'application/octet-stream');
 
-    // Read entire response as buffer then send — most reliable approach
     const arrayBuffer = await response.arrayBuffer();
     const buffer = Buffer.from(arrayBuffer);
-    console.log('Proxy download:', safeFilename, buffer.length, 'bytes');
+    console.log('Proxy download OK:', safeFilename, buffer.length, 'bytes');
     res.setHeader('Content-Length', buffer.length);
     res.send(buffer);
   } catch(e) {

@@ -1347,22 +1347,11 @@
   }
 
   // ── DOWNLOAD ──────────────────────────────────────────────────────
-  function fixCloudinaryUrl(url, filename) {
-    // PDFs and raw files get stored under /image/upload/ by mistake
-    // They must be fetched from /raw/upload/ otherwise Cloudinary returns an error
-    var ext = (filename || '').split('.').pop().toLowerCase();
-    var isRaw = ['pdf','cdr','ai','eps','zip','doc','docx','xls','xlsx'].indexOf(ext) !== -1;
-    if (isRaw && url.indexOf('/image/upload/') !== -1) {
-      return url.replace('/image/upload/', '/raw/upload/');
-    }
-    return url;
-  }
-
   function triggerDownload(url, filename) {
-    var fname      = filename || 'file';
-    var fixedUrl   = fixCloudinaryUrl(url, fname);
-    var proxyUrl   = location.origin + '/api/download'
-      + '?url='      + encodeURIComponent(fixedUrl)
+    var fname    = filename || 'file';
+    // Server proxy handles both /raw/upload/ and /image/upload/ with auto-fallback
+    var proxyUrl = location.origin + '/api/download'
+      + '?url='      + encodeURIComponent(url)
       + '&filename=' + encodeURIComponent(fname);
     var a = document.createElement('a');
     a.href = proxyUrl;
