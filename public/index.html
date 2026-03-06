@@ -14,7 +14,19 @@
     --shadow: 0 4px 24px rgba(15,15,15,0.10);
     --ref-accent: #6b4a2a; --ref-bg: #fdf7f0;
     --yes-color: #2e8b57; --no-color: #c0392b;
+    --header-bg: #0f0f0f;
+    --modal-bg: #fff; --input-bg: #fff; --table-bg: #fff;
   }
+  body.dark {
+    --ink: #e8e2d9; --paper: #1a1917; --cream: #242220;
+    --accent: #e06840; --accent2: #4a9bc4; --muted: #8a8278;
+    --border: #3a3632; --row-hover: #2a2724;
+    --shadow: 0 4px 24px rgba(0,0,0,0.4);
+    --ref-bg: #1f1d1b; --header-bg: #111110;
+    --modal-bg: #201f1d; --input-bg: #2a2825; --table-bg: #1e1c1a;
+    --yes-color: #4caf78; --no-color: #e05c5c;
+  }
+  *, *::before, *::after { transition: background-color 0.2s, border-color 0.2s, color 0.15s; }
   body { font-family: 'DM Mono', monospace; background: var(--paper); color: var(--ink); min-height: 100vh; }
 
   header {
@@ -559,6 +571,56 @@
     #mobile-cards { display: none; }
   }
 
+  /* ── DARK MODE OVERRIDES ──────────────────────────────────────────── */
+  body.dark header { background: var(--header-bg); }
+  body.dark .table-wrap { background: var(--table-bg); }
+  body.dark thead tr { background: var(--cream); }
+  body.dark td { background: var(--table-bg); }
+  body.dark tbody tr:hover td { background: var(--row-hover); }
+  body.dark td.ref-cell { background: var(--ref-bg); }
+  body.dark tbody tr:hover td.ref-cell { background: #252220; }
+  body.dark #search-input { background: var(--input-bg); color: var(--ink); border-color: var(--border); }
+  body.dark .filter-select { background-color: var(--input-bg); color: var(--ink); border-color: var(--border); }
+  body.dark .modal { background: var(--modal-bg); }
+  body.dark .modal input, body.dark .modal textarea, body.dark .modal select { background: var(--input-bg); color: var(--ink); border-color: var(--border); }
+  body.dark .modal-files-list { background: var(--cream); }
+  body.dark .artwork-upload-zone { background: var(--input-bg); border-color: var(--border); }
+  body.dark .thumb-wrap { background: var(--cream); border-color: var(--border); }
+  body.dark .thumb-add { background: transparent; border-color: var(--border); }
+  body.dark .thumb-add:hover { background: #2a2520; }
+  body.dark .thumb-placeholder { background: var(--cream); }
+  body.dark .ref-thumb-wrap { background: var(--cream); border-color: var(--border); }
+  body.dark .ref-add { border-color: var(--border); color: var(--muted); }
+  body.dark .tag-brand { background: var(--cream); border-color: var(--border); color: var(--ink); }
+  body.dark .btn-icon { background: var(--cream); border-color: var(--border); color: var(--ink); }
+  body.dark .btn-icon:hover { background: var(--row-hover); }
+  body.dark .btn-del-row:hover { background: #3a1a1a; color: var(--accent); }
+  body.dark .mobile-card { background: var(--table-bg); border-color: var(--border); }
+  body.dark mark { background: #5a3a10; color: var(--ink); }
+  body.dark .info-box { background: var(--modal-bg); }
+  body.dark .info-box-header { border-color: var(--border); }
+  body.dark .info-box-footer { border-color: var(--border); }
+  body.dark .info-desc-edit { background: var(--input-bg); color: var(--ink); border-color: var(--border); }
+  body.dark .info-file-chip { background: var(--cream); border-color: var(--border); color: var(--ink); }
+  body.dark .confirm-box { background: var(--modal-bg); }
+  body.dark .confirm-no { background: var(--cream); color: var(--ink); border-color: var(--border); }
+  body.dark .import-zone { background: var(--input-bg); border-color: var(--border); }
+  body.dark .import-mode-btn { background: var(--input-bg); color: var(--muted); border-color: var(--border); }
+  body.dark .import-progress { background: var(--cream); }
+  body.dark .lightbox-cdr .cdr-icon { background: var(--accent2); }
+  body.dark .mc-brand { background: var(--cream); border-color: var(--border); }
+  body.dark code { background: var(--cream); color: var(--ink); }
+
+  /* Dark mode toggle button */
+  .dark-toggle {
+    background: rgba(255,255,255,0.08); border: 1.5px solid rgba(255,255,255,0.15);
+    color: var(--paper); width: 36px; height: 36px; cursor: pointer;
+    display: flex; align-items: center; justify-content: center;
+    border-radius: 50%; transition: all 0.2s; flex-shrink: 0;
+  }
+  .dark-toggle:hover { background: rgba(255,255,255,0.16); border-color: rgba(255,255,255,0.3); }
+  body.dark .dark-toggle { background: rgba(255,255,255,0.1); border-color: rgba(255,255,255,0.2); }
+
   /* ── CUSTOM CONFIRM DIALOG ──────────────────────────────────────── */
   .confirm-overlay {
     display: none; position: fixed; inset: 0;
@@ -619,6 +681,10 @@
       Import Backup
     </button>
     <button class="add-btn" onclick="openModal()">+ Add Product</button>
+    <button class="dark-toggle" id="dark-toggle-btn" onclick="toggleDarkMode()" title="Toggle dark mode">
+      <svg id="dark-icon-moon" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
+      <svg id="dark-icon-sun" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24" style="display:none"><circle cx="12" cy="12" r="5"/><path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"/></svg>
+    </button>
   </div>
 </header>
 
@@ -878,6 +944,31 @@
         else sourcedMatch = sv === sourcedFilter;
       }
       return textMatch && sourcedMatch;
+    });
+  }
+
+  // ── DARK MODE ─────────────────────────────────────────────────────
+  function toggleDarkMode() {
+    var isDark = document.body.classList.toggle('dark');
+    localStorage.setItem('darkMode', isDark ? '1' : '0');
+    document.getElementById('dark-icon-moon').style.display = isDark ? 'none' : '';
+    document.getElementById('dark-icon-sun').style.display  = isDark ? '' : 'none';
+  }
+  // Apply saved preference on load
+  (function() {
+    var saved = localStorage.getItem('darkMode');
+    if (saved === '1') {
+      document.body.classList.add('dark');
+      document.getElementById('dark-icon-moon').style.display = 'none';
+      document.getElementById('dark-icon-sun').style.display  = '';
+    }
+  })();
+
+  // ── CAMEL CASE HELPER ─────────────────────────────────────────────
+  function toCamelCase(str) {
+    if (!str) return '';
+    return str.replace(/\w\S*/g, function(word) {
+      return word.charAt(0).toUpperCase() + word.slice(1).toLowerCase();
     });
   }
 
@@ -1308,13 +1399,13 @@
       var descPreview = p.description
         ? (p.description.length > 80 ? p.description.slice(0, 80) + '…' : p.description)
         : 'No description';
-      tdName.innerHTML = '<strong>' + highlight(p.name, searchQuery) + '</strong>'
+      tdName.innerHTML = '<strong>' + highlight(toCamelCase(p.name), searchQuery) + '</strong>'
         + '<div class="td-desc' + (!p.description ? ' no-desc' : '') + '">' + escHtml(descPreview) + '</div>';
       (function(pid) { tdName.onclick = function() { openInfoPopup(pid); }; })(p.id);
 
       var tdBrand = document.createElement('td');
       tdBrand.innerHTML = p.brand
-        ? '<span class="tag-brand">' + highlight(p.brand, searchQuery) + '</span>'
+        ? '<span class="tag-brand">' + highlight(toCamelCase(p.brand), searchQuery) + '</span>'
         : '<span style="opacity:.3;font-size:0.75rem">&mdash;</span>';
 
       // ── SOURCED CELL ──
@@ -1415,7 +1506,7 @@
   // ── DELETE PRODUCT ────────────────────────────────────────────────
   function deleteProduct(pid) {
     var p = products.find(function(x) { return x.id === pid; });
-    var pname = p ? p.name : 'this product';
+    var pname = p ? toCamelCase(p.name) : 'this product';
     showConfirm(
       'Delete Product?',
       'Are you sure you want to delete <strong>' + escHtml(pname) + '</strong> and all its files? <br><span style="opacity:0.6;font-size:0.72rem">This cannot be undone.</span>',
@@ -1504,7 +1595,7 @@
       } else {
         content.innerHTML = '<div class="lightbox-cdr">'
           + '<div class="cdr-icon" style="background:' + iconColor + '">' + ext + '</div>'
-          + '<div class="cdr-product">' + escHtml(p ? p.name : '') + '</div>'
+          + '<div class="cdr-product">' + escHtml(toCamelCase(p ? p.name : '')) + '</div>'
           + '<div class="cdr-fname">' + escHtml(rf.originalName) + '</div>'
           + '<button class="lightbox-dl" onclick="downloadRefFile(\'' + lbProductId + '\',' + lbFileIndex + ')">&#8595; Download File</button>'
           + '</div>';
@@ -1533,7 +1624,7 @@
       var ext = (f.originalName || 'file').split('.').pop().toUpperCase();
       content.innerHTML = '<div class="lightbox-cdr">'
         + '<div class="cdr-icon">' + ext + '</div>'
-        + '<div class="cdr-product">' + escHtml(p.name) + '</div>'
+        + '<div class="cdr-product">' + escHtml(toCamelCase(p.name)) + '</div>'
         + '<div class="cdr-fname">' + escHtml(f.originalName) + '</div>'
         + '<button class="lightbox-dl" onclick="downloadFile(\'' + f.url + '\',\'' + escHtml(f.originalName) + '\')">&#8595; Download File</button>'
         + '</div>';
@@ -1598,8 +1689,8 @@
 
       // Header — name + brand
       var mcHeader = '<div class="mc-header">'
-        + '<div class="mc-name">' + highlight(p.name, searchQuery) + '</div>'
-        + (p.brand ? '<span class="mc-brand">' + highlight(p.brand, searchQuery) + '</span>' : '')
+        + '<div class="mc-name">' + highlight(toCamelCase(p.name), searchQuery) + '</div>'
+        + (p.brand ? '<span class="mc-brand">' + highlight(toCamelCase(p.brand), searchQuery) + '</span>' : '')
         + '</div>';
 
       // Sourced row
@@ -1747,10 +1838,10 @@
     var p = products.find(function(x) { return x.id === pid; });
     if (!p) return;
     infoProductId = pid;
-    document.getElementById('info-title').textContent = p.name;
+    document.getElementById('info-title').textContent = toCamelCase(p.name);
     var brandWrap = document.getElementById('info-brand-wrap');
     brandWrap.innerHTML = p.brand
-      ? '<span class="info-box-brand">' + escHtml(p.brand) + '</span>'
+      ? '<span class="info-box-brand">' + escHtml(toCamelCase(p.brand)) + '</span>'
       : '';
     document.getElementById('info-description').value = p.description || '';
 
