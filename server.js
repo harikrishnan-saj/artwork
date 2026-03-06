@@ -74,13 +74,9 @@ function uploadToCloudinary(buffer, originalName, folder) {
         if (!result || !result.public_id) {
           return reject(new Error('Cloudinary returned no result for ' + safeName));
         }
-        // Always use the original extension in the URL for raw files
-        // so CDR files don't get served as .zip
-        let fileUrl = result.secure_url || '';
-        if (resourceType === 'raw' && fileUrl && !fileUrl.endsWith(ext)) {
-          // Strip whatever extension Cloudinary assigned and use original
-          fileUrl = fileUrl.replace(/\.[^/.]+$/, '') + ext;
-        }
+        // Use exact URL from Cloudinary — never modify it or the file won't be found
+        const fileUrl = result.secure_url || '';
+        console.log('Uploaded:', safeName, '->', fileUrl);
         resolve({
           originalName:  safeName,
           publicId:      result.public_id,
@@ -378,20 +374,35 @@ app.get('/api/download', async (req, res) => {
   try {
     // Try the URL as-is first, then fallback between raw/image if 404
     async function tryFetch(targetUrl) {
-      const r = await fetch(targetUrl);
-      if (r.ok) return r;
-      // If 404, try switching between /raw/upload/ and /image/upload/
-      if (r.status === 404) {
-        let altUrl = targetUrl;
-        if (targetUrl.includes('/raw/upload/'))   altUrl = targetUrl.replace('/raw/upload/',   '/image/upload/');
-        else if (targetUrl.includes('/image/upload/')) altUrl = targetUrl.replace('/image/upload/', '/raw/upload/');
-        if (altUrl !== targetUrl) {
-          console.log('Proxy: trying alt URL', altUrl);
-          const r2 = await fetch(altUrl);
-          if (r2.ok) return r2;
-        }
+      // Build list of URLs to try in order
+      const urls = [targetUrl];
+
+      // 1. Try switching raw/image upload type
+      if (targetUrl.includes('/raw/upload/'))
+        urls.push(targetUrl.replace('/raw/upload/', '/image/upload/'));
+      else if (targetUrl.includes('/image/upload/'))
+        urls.push(targetUrl.replace('/image/upload/', '/raw/upload/'));
+
+      // 2. Fix "_pdf.pdf" / "_cdr.cdr" double-extension bug from old upload code
+      // e.g. "file_1234_pdf.pdf" → "file_1234_pdf" (Cloudinary stores without final ext for raw)
+      const doubleExtMatch = targetUrl.match(/(_[a-z0-9]+)\.([a-z0-9]+)$/i);
+      if (doubleExtMatch && doubleExtMatch[1] === '_' + doubleExtMatch[2]) {
+        // strip the final .ext — e.g. "_pdf.pdf" → "_pdf"
+        const stripped = targetUrl.replace(/\.[a-z0-9]+$/i, '');
+        urls.push(stripped);
+        if (stripped.includes('/raw/upload/'))
+          urls.push(stripped.replace('/raw/upload/', '/image/upload/'));
+        else if (stripped.includes('/image/upload/'))
+          urls.push(stripped.replace('/image/upload/', '/raw/upload/'));
       }
-      return r; // return original failed response
+
+      for (const u of urls) {
+        console.log('Proxy: trying', u);
+        const r = await fetch(u);
+        if (r.ok) return r;
+        console.log('Proxy: got', r.status, 'for', u);
+      }
+      return await fetch(targetUrl); // return last attempt
     }
 
     const response = await tryFetch(url);
