@@ -153,13 +153,28 @@
 
   .table-wrap { border: 1.5px solid var(--border); background: #fff; overflow-x: auto; box-shadow: var(--shadow); }
   table { width: 100%; border-collapse: collapse; min-width: 1050px; }
-  thead tr { background: var(--cream); border-bottom: 2px solid var(--border); }
-  th { font-size: 0.7rem; letter-spacing: 0.12em; text-transform: uppercase; color: var(--muted); padding: 1rem 1.2rem; text-align: left; font-weight: 500; }
+  thead tr {
+    background: linear-gradient(135deg, var(--ink) 0%, #2a2520 100%);
+    border-bottom: 3px solid var(--accent);
+  }
+  body.dark thead tr {
+    background: linear-gradient(135deg, #111 0%, #1e1a16 100%);
+    border-bottom: 3px solid var(--accent);
+  }
+  th {
+    font-size: 0.65rem; letter-spacing: 0.18em; text-transform: uppercase;
+    color: rgba(255,255,255,0.6); padding: 1rem 1.2rem;
+    text-align: left; font-weight: 600;
+    font-family: 'DM Mono', monospace;
+  }
+  th .th-icon { opacity: 0.5; margin-right: 6px; vertical-align: middle; }
+  th .th-main { color: #fff; font-size: 0.72rem; letter-spacing: 0.12em; display: block; }
+  th .th-sub { color: rgba(255,255,255,0.35); font-size: 0.55rem; letter-spacing: 0.06em; display: block; margin-top: 2px; text-transform: none; font-weight: 400; }
   td { padding: 0.9rem 1.2rem; border-bottom: 1px solid var(--cream); font-size: 0.83rem; vertical-align: top; }
   tbody tr:last-child td { border-bottom: none; }
   tbody tr:hover td { background: var(--row-hover); }
 
-  th.ref-header { border-left: 2px solid var(--border); }
+  th.ref-header { border-left: 2px solid rgba(255,255,255,0.1); }
   td.ref-cell { border-left: 2px solid var(--cream); background: var(--ref-bg); }
   tbody tr:hover td.ref-cell { background: #f5ede0; }
 
@@ -264,6 +279,7 @@
   }
   .col-header-label { font-size: 0.7rem; letter-spacing: 0.12em; text-transform: uppercase; color: var(--muted); font-weight: 500; }
   .col-header-sub { font-size: 0.58rem; letter-spacing: 0.05em; color: #b0a888; margin-top: 2px; text-transform: none; font-weight: 400; }
+  body.dark .col-header-sub { color: rgba(255,255,255,0.35); }
 
   .tag-brand {
     display: inline-block; background: var(--cream); border: 1px solid var(--border);
@@ -711,14 +727,31 @@
     <table>
       <thead>
         <tr>
-          <th style="width:220px">Innovator</th>
-          <th style="width:220px" class="ref-header">
-            <div class="col-header-label">Reference Files</div>
-            <div class="col-header-sub">PDF &amp; Images — saved to server</div>
+          <th style="width:220px">
+            <svg class="th-icon" width="13" height="13" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M9 9h6M9 12h6M9 15h4"/></svg>
+            <span class="th-main">Innovator</span>
+            <span class="th-sub">Artwork &amp; design files</span>
           </th>
-          <th>Product Name</th>
-          <th>Brand</th>
-          <th>Actions</th>
+          <th style="width:220px" class="ref-header">
+            <svg class="th-icon" width="13" height="13" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+            <span class="th-main">Reference Files</span>
+            <span class="th-sub">PDFs &amp; images</span>
+          </th>
+          <th>
+            <svg class="th-icon" width="13" height="13" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 3.6-7 8-7s8 3 8 7"/></svg>
+            <span class="th-main">Product Name</span>
+            <span class="th-sub">Click to view details</span>
+          </th>
+          <th>
+            <svg class="th-icon" width="13" height="13" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z"/><line x1="7" y1="7" x2="7.01" y2="7"/></svg>
+            <span class="th-main">Brand</span>
+            <span class="th-sub">Manufacturer</span>
+          </th>
+          <th>
+            <svg class="th-icon" width="13" height="13" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M4.22 4.22l2.12 2.12M17.66 17.66l2.12 2.12M2 12h3M19 12h3M4.22 19.78l2.12-2.12M17.66 6.34l2.12-2.12"/></svg>
+            <span class="th-main">Actions</span>
+            <span class="th-sub">Edit · Download · Delete</span>
+          </th>
         </tr>
       </thead>
       <tbody id="table-body">
