@@ -9,7 +9,7 @@ const cloudinary  = require('cloudinary').v2;
 const streamifier = require('streamifier');
 
 const app  = express();
-const PORT = process.env.PORT || 3000;
+const PORT = process.env.PORT || 8080;
 
 // ── CLOUDINARY CONFIG ─────────────────────────────────────────────
 cloudinary.config({
