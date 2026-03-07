@@ -36,7 +36,19 @@
     justify-content: space-between; gap: 2rem;
   }
   header h1 { font-family: 'DM Serif Display', serif; font-size: 2.4rem; line-height: 1; letter-spacing: -0.02em; }
-  header h1 span { color: var(--accent); font-style: italic; }
+  header h1 span { font-style: italic; }
+  .h1-product { color: var(--paper); }
+  .h1-artwork { color: var(--accent); }
+  .h1-manager { color: var(--paper); }
+  body.dark .h1-product {
+    color: #ff6ec7;
+    text-shadow: 0 0 8px #ff6ec7, 0 0 20px #ff3dab, 0 0 40px #ff3dab;
+  }
+  body.dark .h1-artwork { color: var(--accent); text-shadow: none; }
+  body.dark .h1-manager {
+    color: #3df0ff;
+    text-shadow: 0 0 8px #3df0ff, 0 0 20px #00c8ff, 0 0 40px #00c8ff;
+  }
   header p { color: var(--muted); font-size: 0.78rem; margin-top: 0.3rem; letter-spacing: 0.08em; text-transform: uppercase; }
   .add-btn {
     background: var(--accent); color: #fff; border: none;
@@ -685,7 +697,7 @@
 
 <header>
   <div>
-    <h1>Product <span>Artwork</span> Manager</h1>
+    <h1><span class="h1-product">Product</span> <span class="h1-artwork">Artwork</span> <span class="h1-manager">Manager</span></h1>
     <p>Manage products, brands &amp; artwork files</p>
   </div>
   <div class="header-actions">
