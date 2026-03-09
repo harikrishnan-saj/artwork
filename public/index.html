@@ -609,6 +609,46 @@
     #mobile-cards { display: none; }
   }
 
+  /* ── MODE TRANSITION ANIMATION ──────────────────────────────────── */
+  .mode-flash {
+    position: fixed; inset: 0; z-index: 99999;
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    gap: 1.2rem; pointer-events: none;
+    opacity: 0; transition: opacity 0.25s ease;
+  }
+  .mode-flash.show { opacity: 1; }
+  .mode-flash-text {
+    font-family: 'DM Serif Display', serif;
+    font-size: 2.8rem; letter-spacing: -0.02em;
+    animation: textPulse 0.6s ease infinite alternate;
+  }
+  .mode-flash-sub {
+    font-size: 0.78rem; letter-spacing: 0.2em; text-transform: uppercase;
+    opacity: 0.6;
+  }
+  .mode-flash-dots { display: flex; gap: 8px; }
+  .mode-flash-dots span {
+    width: 8px; height: 8px; border-radius: 50%;
+    animation: dotBounce 0.6s ease infinite;
+  }
+  .mode-flash-dots span:nth-child(2) { animation-delay: 0.15s; }
+  .mode-flash-dots span:nth-child(3) { animation-delay: 0.30s; }
+  @keyframes dotBounce {
+    0%,100% { transform: translateY(0); opacity:0.4; }
+    50%      { transform: translateY(-8px); opacity:1; }
+  }
+  @keyframes textPulse {
+    from { opacity: 0.7; } to { opacity: 1; }
+  }
+  /* dark flash = black bg, neon text */
+  .mode-flash.to-dark  { background: #000; }
+  .mode-flash.to-dark .mode-flash-text { color: #fff; text-shadow: 0 0 30px #ff6ec7, 0 0 60px #00c8ff; }
+  .mode-flash.to-dark .mode-flash-dots span { background: #ff6ec7; box-shadow: 0 0 8px #ff6ec7; }
+  /* light flash = white bg, dark text */
+  .mode-flash.to-light { background: #f5f0e8; }
+  .mode-flash.to-light .mode-flash-text { color: #0f0f0f; text-shadow: none; }
+  .mode-flash.to-light .mode-flash-dots span { background: #c8502a; }
+
   /* ── DARK MODE OVERRIDES ──────────────────────────────────────────── */
   body.dark header { background: var(--header-bg); }
   body.dark .table-wrap { background: var(--table-bg); }
@@ -770,6 +810,11 @@
             <span class="th-sub">Manufacturer</span>
           </th>
           <th>
+            <svg class="th-icon" width="13" height="13" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
+            <span class="th-main">Manufacturer</span>
+            <span class="th-sub">Company name</span>
+          </th>
+          <th>
             <svg class="th-icon" width="13" height="13" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M4.22 4.22l2.12 2.12M17.66 17.66l2.12 2.12M2 12h3M19 12h3M4.22 19.78l2.12-2.12M17.66 6.34l2.12-2.12"/></svg>
             <span class="th-main">Actions</span>
             <span class="th-sub">Edit · Download · Delete</span>
@@ -804,6 +849,10 @@
     <div class="form-group">
       <label>Brand Name</label>
       <input type="text" id="input-brand" placeholder="e.g. Acme Corp" />
+    </div>
+    <div class="form-group">
+      <label>Manufacturer Name <span style="color:var(--muted);font-size:0.65rem;font-weight:400;text-transform:none;letter-spacing:0">(optional)</span></label>
+      <input type="text" id="input-manufacturer" placeholder="e.g. Sun Pharma Ltd." />
     </div>
     <div class="form-group">
       <label>Description <span style="color:var(--muted);font-size:0.65rem;font-weight:400;text-transform:none;letter-spacing:0">(optional)</span></label>
@@ -907,6 +956,13 @@
       <button class="btn-save" onclick="saveInfoDescription()">Save Description</button>
     </div>
   </div>
+</div>
+
+<!-- MODE TRANSITION FLASH -->
+<div class="mode-flash" id="mode-flash">
+  <div class="mode-flash-text" id="mode-flash-text">Turning Dark</div>
+  <div class="mode-flash-dots"><span></span><span></span><span></span></div>
+  <div class="mode-flash-sub" id="mode-flash-sub">switching theme</div>
 </div>
 
 <!-- CONFIRM DIALOG -->
@@ -1016,10 +1072,32 @@
 
   // ── DARK MODE ─────────────────────────────────────────────────────
   function toggleDarkMode() {
-    var isDark = document.body.classList.toggle('dark');
-    localStorage.setItem('darkMode', isDark ? '1' : '0');
-    document.getElementById('dark-icon-moon').style.display = isDark ? 'none' : '';
-    document.getElementById('dark-icon-sun').style.display  = isDark ? '' : 'none';
+    var goingDark = !document.body.classList.contains('dark');
+    var flash = document.getElementById('mode-flash');
+    var flashText = document.getElementById('mode-flash-text');
+    var flashSub  = document.getElementById('mode-flash-sub');
+
+    // Set flash style
+    flash.className = 'mode-flash ' + (goingDark ? 'to-dark' : 'to-light');
+    flashText.textContent = goingDark ? 'Turning Dark' : 'Turning Light';
+    flashSub.textContent  = goingDark ? 'switching to dark mode' : 'switching to light mode';
+
+    // Show flash
+    requestAnimationFrame(function() {
+      flash.classList.add('show');
+    });
+
+    // After 700ms apply theme, then fade out
+    setTimeout(function() {
+      document.body.classList.toggle('dark', goingDark);
+      localStorage.setItem('darkMode', goingDark ? '1' : '0');
+      document.getElementById('dark-icon-moon').style.display = goingDark ? 'none' : '';
+      document.getElementById('dark-icon-sun').style.display  = goingDark ? '' : 'none';
+
+      setTimeout(function() {
+        flash.classList.remove('show');
+      }, 400);
+    }, 700);
   }
   // Apply saved preference on load
   (function() {
@@ -1087,6 +1165,7 @@
     document.getElementById('input-name').value = '';
     document.getElementById('input-name').classList.remove('input-error');
     document.getElementById('input-brand').value = '';
+    document.getElementById('input-manufacturer').value = '';
     document.getElementById('input-description').value = '';
     document.getElementById('modal-file-input').value = '';
     renderModalFileList();
@@ -1105,6 +1184,7 @@
     document.getElementById('input-name').value = p.name;
     document.getElementById('input-name').classList.remove('input-error');
     document.getElementById('input-brand').value = p.brand || '';
+    document.getElementById('input-manufacturer').value = p.manufacturer || '';
     document.getElementById('input-description').value = p.description || '';
     document.getElementById('modal-file-input').value = '';
     renderModalFileList();
@@ -1189,7 +1269,8 @@
     var nameEl = document.getElementById('input-name');
     var name   = nameEl.value.trim();
     var brand  = document.getElementById('input-brand').value.trim();
-    var description = document.getElementById('input-description').value.trim();
+    var description    = document.getElementById('input-description').value.trim();
+    var manufacturer  = document.getElementById('input-manufacturer').value.trim();
     if (!name) { nameEl.classList.add('input-error'); nameEl.focus(); return; }
     nameEl.classList.remove('input-error');
 
@@ -1202,6 +1283,7 @@
     fd.append('brand', brand);
     fd.append('sourced', '');
     fd.append('description', description);
+    fd.append('manufacturer', manufacturer);
 
     if (editingId !== null) {
       var keepIds = modalExistingFiles.map(function(f) { return f.publicId; });
@@ -1495,6 +1577,12 @@
       })(p.id);
       tdSourced.appendChild(sel);
 
+      // ── MANUFACTURER ──
+      var tdMfr = document.createElement('td');
+      tdMfr.innerHTML = p.manufacturer
+        ? '<span class="tag-brand" style="background:var(--ref-bg);border-color:var(--ref-accent);color:var(--ref-accent)">' + escHtml(toCamelCase(p.manufacturer)) + '</span>'
+        : '<span style="opacity:.3;font-size:0.75rem">&mdash;</span>';
+
       // ── ACTIONS ──
       var tdAct  = document.createElement('td');
       var actDiv = document.createElement('div');
@@ -1525,6 +1613,7 @@
       tr.appendChild(tdRef);
       tr.appendChild(tdName);
       tr.appendChild(tdBrand);
+      tr.appendChild(tdMfr);
       tr.appendChild(tdAct);
       tbody.appendChild(tr);
     });
@@ -1971,6 +2060,7 @@
     fd.append('brand', p.brand || '');
     fd.append('sourced', p.sourced || '');
     fd.append('description', desc);
+    fd.append('manufacturer', p.manufacturer || '');
     fd.append('keepFiles', JSON.stringify((p.files || []).map(function(f) { return f.publicId; })));
     fd.append('keepRefFiles', JSON.stringify((p.refFiles || []).map(function(f) { return f.publicId; })));
     showStatus('saving', '⟳ Saving…');

@@ -134,11 +134,12 @@ app.post('/api/products', upload.array('files'), async (req, res) => {
     }).map(r => r.value);
     const db      = readDB();
     const product = {
-      id:          Date.now(),
-      name:        req.body.name        || '',
-      brand:       req.body.brand       || '',
-      sourced:     req.body.sourced     || '',
-      description: req.body.description || '',
+      id:           Date.now(),
+      name:         req.body.name         || '',
+      brand:        req.body.brand        || '',
+      manufacturer: req.body.manufacturer || '',
+      sourced:      req.body.sourced      || '',
+      description:  req.body.description  || '',
       files,
       refFiles: [],
     };
@@ -173,10 +174,11 @@ app.put('/api/products/:id', upload.array('newFiles'), async (req, res) => {
       return r.status === 'fulfilled';
     }).map(r => r.value);
 
-    p.name        = req.body.name        || p.name;
-    p.brand       = req.body.brand       || '';
-    p.sourced     = req.body.sourced     !== undefined ? req.body.sourced : (p.sourced || '');
-    p.description = req.body.description !== undefined ? req.body.description : (p.description || '');
+    p.name         = req.body.name         || p.name;
+    p.brand        = req.body.brand        || '';
+    p.manufacturer = req.body.manufacturer !== undefined ? req.body.manufacturer : (p.manufacturer || '');
+    p.sourced      = req.body.sourced      !== undefined ? req.body.sourced      : (p.sourced      || '');
+    p.description  = req.body.description  !== undefined ? req.body.description  : (p.description  || '');
     p.files   = [...keptFiles, ...newFiles];
     if (!p.refFiles) p.refFiles = [];
 
