@@ -432,6 +432,15 @@
   }
   .lightbox-dl:hover { background: rgba(255,255,255,0.2); }
 
+  /* ── COMPLETENESS BADGE ─────────────────────────────────────────── */
+  .complete-dot {
+    display: inline-block; width: 7px; height: 7px; border-radius: 50%;
+    margin-right: 6px; flex-shrink: 0; vertical-align: middle; margin-bottom: 1px;
+  }
+  .complete-dot.full    { background: #2e8b57; box-shadow: 0 0 5px #2e8b57; }
+  .complete-dot.partial { background: #e8a020; box-shadow: 0 0 5px #e8a020; }
+  .complete-dot.empty   { background: #c0392b; box-shadow: 0 0 5px #c0392b; }
+
   /* ── DESCRIPTION IN TABLE ───────────────────────────────────────── */
   .td-desc {
     font-size: 0.72rem; color: var(--muted); margin-top: 0.25rem;
@@ -972,7 +981,7 @@
   }
 
   function getFilteredProducts() {
-    return products.filter(function(p) {
+    var filtered = products.filter(function(p) {
       // Text search filter
       var textMatch = true;
       if (searchQuery) {
@@ -991,6 +1000,18 @@
       }
       return textMatch && sourcedMatch;
     });
+
+    // Sort: both files present → top, one missing → middle, both missing → bottom
+    filtered.sort(function(a, b) {
+      function score(p) {
+        var hasArt = p.files    && p.files.length    > 0 ? 1 : 0;
+        var hasRef = p.refFiles && p.refFiles.length > 0 ? 1 : 0;
+        return hasArt + hasRef; // 2 = both, 1 = one, 0 = none
+      }
+      return score(b) - score(a);
+    });
+
+    return filtered;
   }
 
   // ── DARK MODE ─────────────────────────────────────────────────────
@@ -1442,10 +1463,15 @@
       // ── NAME, BRAND ──
       var tdName  = document.createElement('td');
       tdName.style.cursor = 'pointer';
+      var hasArt  = p.files    && p.files.length    > 0;
+      var hasRef  = p.refFiles && p.refFiles.length > 0;
+      var dotCls  = (hasArt && hasRef) ? 'full' : (hasArt || hasRef) ? 'partial' : 'empty';
+      var dotTip  = (hasArt && hasRef) ? 'All files uploaded' : (hasArt ? 'Missing reference files' : hasRef ? 'Missing artwork files' : 'No files uploaded');
       var descPreview = p.description
         ? (p.description.length > 80 ? p.description.slice(0, 80) + '…' : p.description)
         : 'No description';
-      tdName.innerHTML = '<strong>' + highlight(toCamelCase(p.name), searchQuery) + '</strong>'
+      tdName.innerHTML = '<span class="complete-dot ' + dotCls + '" title="' + dotTip + '"></span>'
+        + '<strong>' + highlight(toCamelCase(p.name), searchQuery) + '</strong>'
         + '<div class="td-desc' + (!p.description ? ' no-desc' : '') + '">' + escHtml(descPreview) + '</div>';
       (function(pid) { tdName.onclick = function() { openInfoPopup(pid); }; })(p.id);
 
