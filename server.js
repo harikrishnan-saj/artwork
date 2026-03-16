@@ -416,8 +416,12 @@ app.get('/api/download', async (req, res) => {
     }
 
     const safeFilename = filename.replace(/"/g, '_');
-    res.setHeader('Content-Disposition', 'attachment; filename="' + safeFilename + '"');
-    res.setHeader('Content-Type', 'application/octet-stream');
+    const inline = req.query.inline === '1';
+    const ext = filename.split('.').pop().toLowerCase();
+    const mimeMap = { pdf: 'application/pdf', png: 'image/png', jpg: 'image/jpeg', jpeg: 'image/jpeg', svg: 'image/svg+xml', webp: 'image/webp', gif: 'image/gif' };
+    const mime = mimeMap[ext] || 'application/octet-stream';
+    res.setHeader('Content-Disposition', (inline ? 'inline' : 'attachment') + '; filename="' + safeFilename + '"');
+    res.setHeader('Content-Type', mime);
 
     const arrayBuffer = await response.arrayBuffer();
     const buffer = Buffer.from(arrayBuffer);

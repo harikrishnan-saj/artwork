@@ -425,6 +425,30 @@
   }
   .lightbox-cdr .cdr-product { font-family: 'DM Serif Display', serif; font-size: 1.4rem; }
   .lightbox-cdr .cdr-fname { opacity: 0.45; font-size: 0.78rem; }
+  .pdf-preview-wrap {
+    width: min(780px, 90vw); height: min(72vh, 600px);
+    display: flex; flex-direction: column; gap: 0.8rem; align-items: center;
+  }
+  .pdf-preview-iframe {
+    width: 100%; flex: 1; border: none;
+    background: #fff; box-shadow: 0 0 40px rgba(0,0,0,0.4);
+  }
+  .pdf-preview-fallback {
+    width: 100%; flex: 1; display: flex; flex-direction: column;
+    align-items: center; justify-content: center; gap: 1rem;
+    background: rgba(255,255,255,0.05); border: 1.5px solid rgba(255,255,255,0.1);
+  }
+  .pdf-preview-fallback .cdr-icon { font-size: 1rem; padding: 0.6rem 1.2rem; }
+  .pdf-preview-actions { display: flex; gap: 0.8rem; align-items: center; }
+  .lb-open-btn {
+    background: rgba(255,255,255,0.1); border: 1.5px solid rgba(255,255,255,0.25);
+    color: #fff; padding: 0.5rem 1.1rem; font-family: 'DM Mono', monospace;
+    font-size: 0.72rem; letter-spacing: 0.08em; text-transform: uppercase;
+    cursor: pointer; transition: background 0.15s; text-decoration: none;
+    display: inline-flex; align-items: center; gap: 6px;
+  }
+  .lb-open-btn:hover { background: rgba(255,255,255,0.2); }
+
   .lightbox-dl {
     background: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.3);
     color: #fff; padding: 0.5rem 1.2rem; cursor: pointer; font-family: 'DM Mono', monospace;
@@ -1748,17 +1772,26 @@
       var ext = (rf.originalName || "file").split('.').pop().toUpperCase();
       var iconColor = isPDF ? '#c0392b' : 'var(--accent2)';
 
+      var dlBtn  = '<button class="lightbox-dl" onclick="downloadRefFile(\'' + lbProductId + '\',' + lbFileIndex + ')">&#8595; Download</button>';
+      var openBtn = '<a class="lb-open-btn" href="' + rf.url + '" target="_blank" rel="noopener">&#8599; Open in tab</a>';
+
       if (isImg) {
         content.innerHTML = '<div style="display:flex;flex-direction:column;align-items:center;gap:1rem">'
-          + '<img src="' + rf.url + '" alt="' + escHtml(rf.originalName || '') + '" />'
-          + '<button class="lightbox-dl" onclick="downloadRefFile(\'' + lbProductId + '\',' + lbFileIndex + ')">&#8595; Download File</button>'
+          + '<img src="' + rf.url + '" alt="' + escHtml(rf.originalName || '') + '" style="max-width:88vw;max-height:68vh;object-fit:contain;box-shadow:0 0 60px rgba(0,0,0,0.5)" />'
+          + '<div class="pdf-preview-actions">' + dlBtn + openBtn + '</div>'
+          + '</div>';
+      } else if (isPDF) {
+        var proxyUrl = location.origin + '/api/download?inline=1&url=' + encodeURIComponent(rf.url) + '&filename=' + encodeURIComponent(rf.originalName || 'file.pdf');
+        content.innerHTML = '<div class="pdf-preview-wrap">'
+          + '<iframe class="pdf-preview-iframe" src="' + proxyUrl + '" title="' + escHtml(rf.originalName || 'PDF') + '"></iframe>'
+          + '<div class="pdf-preview-actions">' + dlBtn + openBtn + '</div>'
           + '</div>';
       } else {
         content.innerHTML = '<div class="lightbox-cdr">'
           + '<div class="cdr-icon" style="background:' + iconColor + '">' + ext + '</div>'
           + '<div class="cdr-product">' + escHtml(toCamelCase(p ? p.name : '')) + '</div>'
           + '<div class="cdr-fname">' + escHtml(rf.originalName) + '</div>'
-          + '<button class="lightbox-dl" onclick="downloadRefFile(\'' + lbProductId + '\',' + lbFileIndex + ')">&#8595; Download File</button>'
+          + '<div class="pdf-preview-actions" style="margin-top:0.8rem">' + dlBtn + openBtn + '</div>'
           + '</div>';
       }
 
